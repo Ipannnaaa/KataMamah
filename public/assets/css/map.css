@@ -1,0 +1,469 @@
+/* ==========================================================================
+   map.css — peta isometrik dua tingkat.
+   Tingkat 1: kabupaten utuh + penanda kecamatan.
+   Tingkat 2: diperbesar ke satu kecamatan + kantor layanannya.
+   ========================================================================== */
+
+.iso {
+    position: relative;
+    border-radius: var(--r-lg);
+    overflow: hidden;
+    background: #bfe3f7;
+    border: 1px solid #a9cbda;
+}
+
+.iso__bar {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    right: 12px;
+    z-index: 6;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    pointer-events: none;
+}
+
+.iso__bar > * {
+    pointer-events: auto;
+}
+
+.iso__back {
+    background: rgba(255, 255, 255, .92);
+    border-color: #cfdde2;
+}
+
+.iso__scope {
+    margin: 0;
+    margin-left: auto;
+    padding: 7px 13px;
+    border-radius: var(--r-pill);
+    background: rgba(255, 255, 255, .92);
+    border: 1px solid #cfdde2;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--ink);
+}
+
+/* Panggung menjaga rasio kanvas supaya posisi penanda (dalam persen)
+   selalu jatuh tepat di tempatnya, berapa pun lebar layar. */
+.iso__stage {
+    position: relative;
+    width: 100%;
+    aspect-ratio: var(--iso-w) / var(--iso-h);
+    overflow: hidden;
+}
+
+.iso__world {
+    position: absolute;
+    inset: 0;
+    transform-origin: 50% 50%;
+    transition: transform var(--dur-slow) var(--ease-out);
+}
+
+.iso__svg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.iso__note {
+    margin: 10px 2px 0;
+    font-size: 12px;
+    color: var(--ink-muted);
+}
+
+/* ------------------------------------- batas desa/kelurahan (tingkat 3) */
+
+/* Hanya tampil ketika kecamatannya sedang dibuka: di tampilan kabupaten
+   garis sebanyak ini hanya membuat peta ramai. */
+.iso-villages {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--dur) var(--ease-out);
+}
+
+.iso-villages.is-shown {
+    opacity: 1;
+}
+
+/* Dibuat samar: cukup untuk menunjukkan pembagian wilayah, tanpa bersaing
+   dengan batas kecamatan dan pin kantor yang jadi isi utama peta. */
+.iso-village {
+    fill: none;
+    stroke: rgba(255, 255, 255, .3);
+    stroke-width: calc(.75px / var(--zoom, 1));
+}
+
+/* Nama desa tersembunyi sampai diminta lewat tombol "Nama desa": 163 label
+   sekaligus membuat peta terlalu ramai untuk dibaca. */
+.iso-village__name {
+    display: none;
+    font-family: var(--font);
+    font-size: calc(10px / var(--zoom, 1));
+    font-weight: 600;
+    fill: #3a5a4b;
+    paint-order: stroke;
+    stroke: rgba(255, 255, 255, .72);
+    stroke-width: calc(2.5px / var(--zoom, 1));
+    stroke-linejoin: round;
+}
+
+.iso.show-desa .iso-village__name {
+    display: block;
+}
+
+/* Saat nama ditampilkan, garisnya sedikit ditegaskan supaya nama dan
+   batasnya terbaca sebagai satu kesatuan. */
+.iso.show-desa .iso-village {
+    stroke: rgba(255, 255, 255, .48);
+}
+
+/* ------------------------------------------------- batas antar kecamatan */
+
+.iso-cell {
+    fill: transparent;
+    opacity: .55;
+    pointer-events: none;
+    transition: opacity var(--dur) var(--ease-out), fill var(--dur) var(--ease-out);
+}
+
+/* Kecamatan yang sedang dibuka disorot, yang lain meredup. */
+.iso-cell.is-shown {
+    fill: rgba(255, 255, 255, .26);
+    opacity: 1;
+}
+
+.iso.is-zoomed .iso-cell:not(.is-shown) {
+    opacity: .25;
+}
+
+/* ------------------------------------------------ penanda kecamatan (lv 1) */
+
+.iso-kec {
+    position: absolute;
+    transform: translate(-50%, -100%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 0;
+    color: var(--ink);
+    text-align: center;
+    transition: opacity var(--dur) var(--ease-out), transform var(--dur-fast) var(--ease-out);
+}
+
+.iso-kec:hover {
+    text-decoration: none;
+    transform: translate(-50%, -104%);
+}
+
+.iso-kec__pin {
+    filter: drop-shadow(0 5px 8px rgba(16, 40, 30, .32));
+}
+
+.iso-kec__name {
+    padding: 2px 8px;
+    border-radius: 7px;
+    background: rgba(255, 255, 255, .95);
+    font-size: 11px;
+    font-weight: 800;
+    white-space: nowrap;
+    box-shadow: 0 2px 6px rgba(16, 40, 30, .18);
+}
+
+.iso-kec__count {
+    font-size: 10px;
+    font-weight: 600;
+    color: #2f5560;
+}
+
+.iso-kec.is-faded {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.iso.is-zoomed .iso-kec {
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* ------------------------------------------------- kantor layanan (lv 2) */
+
+.iso-mark {
+    position: absolute;
+    transform: translate(-50%, -78%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 0;
+    color: var(--ink);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--dur) var(--ease-out);
+}
+
+.iso-mark.is-shown {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.iso-mark:hover {
+    text-decoration: none;
+}
+
+/* Pin ala peta: tetesan berwarna kategori dengan ikon di dalam lingkaran.
+   Ukurannya dikecilkan balik mengikuti perbesaran peta supaya tetap sebesar
+   aslinya di layar — seperti penanda pada peta sungguhan. Tanpa ini, menzoom
+   tidak pernah merenggangkan pin karena semuanya ikut membesar. */
+.iso-pin {
+    position: relative;
+    display: block;
+    line-height: 0;
+    filter: drop-shadow(0 7px 9px rgba(16, 40, 30, .34));
+    transform: scale(calc(1 / var(--zoom, 1)));
+    transform-origin: 50% 100%;
+    transition: transform var(--dur) var(--ease-out);
+}
+
+.iso-pin__icon {
+    position: absolute;
+    top: 18.8px;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    display: flex;
+    color: var(--pin, var(--accent));
+}
+
+/* Label dikecilkan balik mengikuti tingkat perbesaran supaya tetap terbaca
+   wajar, tidak ikut membesar 2–3 kali. */
+.iso-mark__name {
+    max-width: 150px;
+    padding: 2px 7px;
+    border-radius: 7px;
+    background: rgba(255, 255, 255, .95);
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1.2;
+    text-align: center;
+    box-shadow: 0 2px 6px rgba(16, 40, 30, .18);
+    transform: scale(calc(1 / var(--zoom, 1)));
+    transform-origin: top center;
+}
+
+.iso-mark:hover .iso-pin,
+.iso-mark:focus-visible .iso-pin,
+.iso-mark.is-active .iso-pin {
+    transform: translateY(-7px) scale(calc(1.1 / var(--zoom, 1)));
+}
+
+.iso-mark.is-active .iso-mark__name {
+    background: var(--accent);
+    color: #ffffff;
+}
+
+/* Kecamatan padat kantor: nama baru muncul saat pin disentuh. */
+.iso-mark.is-dense .iso-mark__name {
+    opacity: 0;
+    transition: opacity var(--dur-fast) var(--ease-out);
+}
+
+.iso-mark.is-dense:hover .iso-mark__name,
+.iso-mark.is-dense:focus-visible .iso-mark__name,
+.iso-mark.is-dense.is-active .iso-mark__name {
+    opacity: 1;
+}
+
+/* ------------------------------------------------------- kartu pratinjau */
+
+.iso-preview {
+    position: absolute;
+    z-index: 8;
+    width: 290px;
+    padding: 14px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--r-lg);
+    box-shadow: var(--shadow-lg);
+}
+
+.iso-preview__photo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 96px;
+    margin-bottom: 10px;
+    border-radius: var(--r);
+    overflow: hidden;
+}
+
+/* Foto sungguhan mengisi seluruh bidang; versi ikon tetap memakai latar
+   berwarna kategori yang diberikan map.js lewat style inline. */
+.iso-preview__photo--real img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* --------------------------------------------------------------- legenda */
+
+.iso-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 16px;
+    margin: 12px 2px 0;
+    padding: 0;
+    list-style: none;
+}
+
+/* Legenda juga tombol penyaring, jadi harus terlihat bisa ditekan. */
+.iso-legend__btn {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 5px 12px 5px 5px;
+    border: 1px solid transparent;
+    border-radius: var(--r-pill);
+    background: none;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ink-muted);
+    cursor: pointer;
+}
+
+.iso-legend__btn.is-all {
+    padding-left: 12px;
+}
+
+.iso-legend__btn:hover {
+    border-color: var(--line);
+    background: var(--surface-2);
+}
+
+.iso-legend__btn[aria-pressed='true'] {
+    border-color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 12%, #ffffff);
+    color: var(--accent-dark);
+}
+
+/* Mode fokus satu jenis: penanda kecamatan mundur, dan hanya pin yang
+   cocok yang tampil — di seluruh kabupaten sekaligus, bukan per
+   kecamatan seperti saat diperbesar. */
+.iso.is-filtered .iso-kec {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.iso.is-filtered .iso-mark {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.iso.is-filtered .iso-mark.is-match {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.iso-legend li {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ink-muted);
+}
+
+.iso-legend__dot {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--pin) 16%, #ffffff);
+    color: var(--pin);
+}
+
+.iso-preview h3 {
+    margin: 8px 0 2px;
+    font-size: 16px;
+    line-height: 1.25;
+}
+
+.iso-preview__addr {
+    margin: 0 0 10px;
+    font-size: 12px;
+    color: var(--ink-muted);
+}
+
+.iso-preview__services {
+    margin: 0 0 10px;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.iso-preview__services li {
+    position: relative;
+    padding-left: 15px;
+    font-size: 12.5px;
+    font-weight: 600;
+}
+
+.iso-preview__services li::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 7px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+}
+
+.iso-preview__services li.is-more {
+    font-weight: 500;
+    color: var(--ink-muted);
+}
+
+.iso-preview__services li.is-more::before {
+    background: var(--line-strong);
+}
+
+.iso-preview__quota {
+    margin: 0 0 12px;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--accent-dark);
+}
+
+.iso-preview__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.iso-preview__actions .btn {
+    flex: 1 1 auto;
+}
+
+@media (max-width: 900px) {
+    .iso-mark__name,
+    .iso-kec__count {
+        display: none;
+    }
+
+    .iso-mark.is-active .iso-mark__name {
+        display: block;
+    }
+
+    .iso-preview {
+        width: calc(100% - 24px);
+    }
+}

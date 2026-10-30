@@ -1,0 +1,432 @@
+/* ==========================================================================
+   anim.css — gerak untuk seluruh situs.
+   Struktur PHP tidak perlu disentuh saat file ini diganti: semua kait
+   berupa kelas yang sudah ada di markup.
+   Pengecualian: gerak peta isometrik (zoom dunia, pin, lapisan desa)
+   tinggal di map.css karena terikat erat pada tata letak peta itu.
+   ========================================================================== */
+
+:root {
+    --ease-out: cubic-bezier(.16, 1, .3, 1);
+    --ease-in-out: cubic-bezier(.65, 0, .35, 1);
+    --dur-fast: 160ms;
+    --dur: 280ms;
+    --dur-slow: 560ms;
+
+    /* Perpindahan antar halaman punya tempo sendiri: memakai --dur-fast
+       terasa seperti halaman berkedip, bukan berpindah. Yang keluar
+       selalu lebih cepat daripada yang masuk supaya tidak terasa dua
+       lembar bertabrakan di tengah. */
+    --dur-page-out: 380ms;
+    --dur-page-in: 760ms;
+    --dur-page-gap: 130ms;
+}
+
+/* Hormati preferensi sistem: tanpa ini animasi bisa memicu mual. */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: .01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: .01ms !important;
+        scroll-behavior: auto !important;
+    }
+}
+
+/* ------------------------------------------------- 1. transisi dasar wajar */
+
+.btn,
+.chip,
+.card--link,
+.district,
+.marker__dot,
+.panel-nav__item,
+.tab,
+.subnav a,
+.thread {
+    transition:
+        background-color var(--dur-fast) var(--ease-out),
+        border-color var(--dur-fast) var(--ease-out),
+        color var(--dur-fast) var(--ease-out),
+        transform var(--dur-fast) var(--ease-out);
+}
+
+.btn:active {
+    transform: translateY(1px);
+}
+
+.card--link:hover {
+    transform: translateY(-2px);
+}
+
+/* ------------------------------------------------------- 2. popup landmark */
+
+/* Muncul dari titik marker; transform-origin diset map.js. */
+.map-popup {
+    animation: popup-in var(--dur) var(--ease-out) both;
+}
+
+@keyframes popup-in {
+    from { opacity: 0; transform: scale(.96) translateY(6px); }
+    to { opacity: 1; transform: none; }
+}
+
+/* ------------------------------------------------------- 3. panel & drawer */
+
+.map-panel {
+    animation: panel-in var(--dur-slow) var(--ease-out) both;
+}
+
+@keyframes panel-in {
+    from { opacity: 0; transform: translateX(-12px); }
+    to { opacity: 1; transform: none; }
+}
+
+/* ---------------------------------------------------- 4. reveal saat scroll */
+
+/* ui.js menambahkan .is-in ketika elemen masuk layar. */
+.reveal {
+    opacity: 0;
+    transform: translateY(14px);
+    transition:
+        opacity var(--dur-slow) var(--ease-out),
+        transform var(--dur-slow) var(--ease-out);
+}
+
+.reveal.is-in {
+    opacity: 1;
+    transform: none;
+}
+
+/* ------------------------------------------------------ 5. status & progres */
+
+.bar__fill,
+.column__bar {
+    transition: width var(--dur-slow) var(--ease-out), height var(--dur-slow) var(--ease-out);
+}
+
+/* Badge berdenyut selagi antrean ditangani. */
+.badge--ditangani {
+    animation: pulse 2.4s var(--ease-in-out) infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(166, 79, 18, .28); }
+    50% { box-shadow: 0 0 0 5px rgba(166, 79, 18, 0); }
+}
+
+/* ------------------------------------------------------------- 6. chat */
+
+.bubble {
+    animation: bubble-in var(--dur) var(--ease-out) both;
+}
+
+@keyframes bubble-in {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: none; }
+}
+
+/* Indikator "mengetik…" bila nanti diaktifkan. */
+.typing span {
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--ink-faint);
+    animation: typing 1.2s var(--ease-in-out) infinite;
+}
+
+.typing span:nth-child(2) { animation-delay: .15s; }
+.typing span:nth-child(3) { animation-delay: .3s; }
+
+@keyframes typing {
+    0%, 100% { opacity: .3; transform: translateY(0); }
+    50% { opacity: 1; transform: translateY(-3px); }
+}
+
+/* --------------------------------------------------------- 7. flash & toast */
+
+.flash {
+    animation: flash-in var(--dur) var(--ease-out) both;
+}
+
+@keyframes flash-in {
+    from { opacity: 0; transform: translateY(-6px); }
+    to { opacity: 1; transform: none; }
+}
+
+/* ------------------------------------------------------- 8. skeleton tabel */
+
+.is-loading {
+    position: relative;
+    overflow: hidden;
+    color: transparent;
+    background: var(--surface-2);
+    border-radius: var(--r-sm);
+}
+
+.is-loading::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .6), transparent);
+    animation: shimmer 1.4s linear infinite;
+}
+
+@keyframes shimmer {
+    to { transform: translateX(100%); }
+}
+
+/* ------------------------------------------- 9. perpindahan antar halaman */
+
+/* Transisi lintas dokumen. Satu aturan ini membuat setiap perpindahan —
+   klik tautan, kirim formulir, tombol kembali peramban — diantarai animasi,
+   tanpa JavaScript dan tanpa menyentuh satu pun berkas PHP. Peramban yang
+   belum mendukung mengabaikannya dan memakai cadangan di bagian bawah. */
+@view-transition {
+    navigation: auto;
+}
+
+/* Bagian yang menetap diberi nama supaya tidak ikut diganti: kepala, menu
+   samping panel, dan kaki halaman tinggal diam sementara isinya berganti.
+   Nama yang sama dipakai ketiga layout dan setiap halaman hanya memuat salah
+   satunya, jadi tidak pernah bentrok — sekaligus membuat kepala landing
+   melebur mulus ke kepala halaman publik. */
+.site-header,
+.panel-header,
+.landing-header {
+    view-transition-name: vt-kepala;
+}
+
+.panel-nav {
+    view-transition-name: vt-menu;
+}
+
+.site-footer,
+.landing-footer {
+    view-transition-name: vt-kaki;
+}
+
+#konten {
+    view-transition-name: vt-isi;
+}
+
+/* Yang menetap cukup berpindah singkat; kalau isinya memang sama, tidak ada
+   yang terlihat bergerak sama sekali. */
+::view-transition-group(vt-kepala),
+::view-transition-group(vt-menu),
+::view-transition-group(vt-kaki),
+::view-transition-old(root),
+::view-transition-new(root) {
+    animation-duration: var(--dur-page-out);
+}
+
+/* Isi halaman digeser menyamping, seperti membalik dari satu lembar ke
+   lembar berikutnya: yang lama keluar ke kiri, yang baru masuk dari kanan.
+   Yang lama pergi lebih cepat daripada yang baru datang, supaya tidak terasa
+   dua lembar bertabrakan di tengah. */
+::view-transition-old(vt-isi) {
+    animation: halaman-keluar-kiri var(--dur-page-out) var(--ease-in-out) both;
+}
+
+::view-transition-new(vt-isi) {
+    animation: halaman-masuk-kanan var(--dur-page-in) var(--ease-out) var(--dur-page-gap) both;
+}
+
+/* Tombol kembali membalik arahnya, jadi gerakannya cocok dengan yang
+   dirasakan pengunjung. Atribut data-arah dipasang ui.js dari jenis navigasi;
+   tanpa JavaScript, arahnya tetap maju dan itu sudah benar untuk klik
+   tautan biasa. */
+html[data-arah='mundur']::view-transition-old(vt-isi) {
+    animation: halaman-keluar-kanan var(--dur-page-out) var(--ease-in-out) both;
+}
+
+html[data-arah='mundur']::view-transition-new(vt-isi) {
+    animation: halaman-masuk-kiri var(--dur-page-in) var(--ease-out) var(--dur-page-gap) both;
+}
+
+/* Tanpa ini, halaman pendek dan halaman panjang saling memaksa tinggi lalu
+   gambarnya gepeng selama transisi. */
+::view-transition-old(vt-isi),
+::view-transition-new(vt-isi) {
+    height: auto;
+    overflow: clip;
+}
+
+@keyframes halaman-keluar-kiri {
+    to { opacity: 0; transform: translateX(-76px); }
+}
+
+@keyframes halaman-masuk-kanan {
+    from { opacity: 0; transform: translateX(88px); }
+}
+
+@keyframes halaman-keluar-kanan {
+    to { opacity: 0; transform: translateX(76px); }
+}
+
+@keyframes halaman-masuk-kiri {
+    from { opacity: 0; transform: translateX(-88px); }
+}
+
+/* Cadangan untuk peramban tanpa View Transitions (Firefox, Safari lama):
+   isinya tetap masuk dari kanan, hanya tanpa animasi keluar.
+
+   Kelasnya dipasang skrip di <head>, bukan lewat :active-view-transition.
+   Cara itu sempat dipakai dan salah: pseudo-class-nya hilang begitu
+   transisi selesai, aturan animasi kembali berlaku saat itu juga, dan
+   isinya bergerak untuk kedua kalinya — terlihat seperti halaman
+   berkedip dua kali. */
+html.tanpa-transisi #konten {
+    animation: halaman-masuk-kanan var(--dur-page-in) var(--ease-out) both;
+}
+
+/* Preferensi "kurangi gerak" tidak terjangkau selektor * di atas, karena
+   pseudo-elemen transisi berada di luar pohon dokumen. */
+@media (prefers-reduced-motion: reduce) {
+    ::view-transition-group(vt-isi),
+    ::view-transition-old(vt-isi),
+    ::view-transition-new(vt-isi),
+    ::view-transition-old(root),
+    ::view-transition-new(root) {
+        animation: none !important;
+    }
+
+    #konten {
+        animation: none !important;
+    }
+}
+
+/* ------------------------------------------------ 10. wordmark Civic Map */
+
+/* Urutannya menceritakan apa yang dilakukan produk ini: pin ditancapkan ke
+   satu titik, riaknya menyebar, nama kabupaten muncul huruf demi huruf dari
+   titik itu, lalu "Civic Map" menyusul dan sebuah rute tipis ditarik di
+   bawahnya. Setelah ditahan sebentar semuanya luruh dalam urutan yang sama,
+   dan siklusnya dimulai lagi.
+
+   Semua bagian memakai satu durasi siklus yang sama (--siklus) dan berulang
+   tanpa henti. Itu syaratnya supaya pentahapan tetap utuh: animation-delay
+   hanya berlaku pada putaran pertama, tetapi karena setiap bagian berputar
+   dengan periode yang sama, selisih waktu antarbagian tidak pernah berubah.
+   Kalau durasinya dibuat berbeda-beda, urutannya akan kacau setelah beberapa
+   putaran.
+
+   Jeda tiap huruf dihitung dari --i, dan "Civic Map" menunggu seluruh huruf
+   selesai lewat --n, jadi nama kabupaten sepanjang apa pun tetap berurutan
+   tanpa perlu menyetel ulang angkanya. */
+
+.wordmark {
+    --siklus: 6s;
+}
+
+.wordmark__pin {
+    animation: pin-jatuh var(--siklus) var(--ease-out) infinite both;
+}
+
+@keyframes pin-jatuh {
+    0% { opacity: 0; transform: translateY(-.7em) scale(.82); }
+    6% { opacity: 1; transform: translateY(.06em) scale(1.04); }
+    8% { transform: translateY(-.03em) scale(.99); }
+    10%, 86% { opacity: 1; transform: none; }
+    94%, 100% { opacity: 0; transform: translateY(-.7em) scale(.82); }
+}
+
+.wordmark__riak {
+    animation: pin-riak var(--siklus) var(--ease-out) infinite both;
+}
+
+@keyframes pin-riak {
+    0%, 7% { opacity: 0; transform: scale(.4); }
+    9% { opacity: .75; transform: scale(.6); }
+    22%, 100% { opacity: 0; transform: scale(3.4); }
+}
+
+.wordmark__huruf {
+    animation: huruf-muncul var(--siklus) var(--ease-out) infinite both;
+    animation-delay: calc(var(--i, 0) * 58ms);
+}
+
+@keyframes huruf-muncul {
+    0% { opacity: 0; transform: translateY(.26em) rotate(-4deg); }
+    9%, 86% { opacity: 1; transform: none; }
+    94% { opacity: 0; transform: translateY(-.18em); }
+    100% { opacity: 0; transform: translateY(.26em) rotate(-4deg); }
+}
+
+.wordmark__judul {
+    animation: judul-muncul var(--siklus) var(--ease-out) infinite both;
+    animation-delay: calc(80ms + var(--n, 5) * 58ms);
+}
+
+@keyframes judul-muncul {
+    0% { opacity: 0; transform: translateX(-.18em); filter: blur(4px); }
+    11%, 86% { opacity: 1; transform: none; filter: none; }
+    94%, 100% { opacity: 0; transform: translateX(-.18em); filter: blur(4px); }
+}
+
+.wordmark__garis {
+    animation: rute-ditarik var(--siklus) var(--ease-in-out) infinite both;
+    animation-delay: calc(220ms + var(--n, 5) * 58ms);
+}
+
+@keyframes rute-ditarik {
+    0% { transform: scaleX(0); }
+    14%, 86% { transform: scaleX(1); }
+    96%, 100% { transform: scaleX(0); }
+}
+
+/* Berhenti selagi disentuh, supaya nama yang sedang dibaca tidak keburu
+   luruh — dan supaya tangkapan layar tidak selalu menangkap tengah animasi. */
+.wordmark:hover * {
+    animation-play-state: paused;
+}
+
+/* Halaman pembuka sudah punya animasi masuk sendiri; tanpa ini wordmark
+   bergerak dua kali, sekali bersama isi halaman dan sekali sendiri. */
+html.tanpa-transisi .is-landing #konten {
+    animation: none;
+}
+
+/* --------------------------------------------------- 11. halaman error */
+
+/* Pin yang nyasar ke laut mengambang pelan. Gerak kecil saja: halaman ini
+   sudah mengecewakan, tidak perlu ditambah yang berkedip-kedip. */
+.errorpage__pin {
+    animation: pin-nyasar 3.6s var(--ease-in-out) infinite;
+    transform-origin: 176px 126px;
+}
+
+@keyframes pin-nyasar {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    50% { transform: translateY(-5px) rotate(-4deg); }
+}
+
+/* ------------------------------------------- 12. layar "Mengalihkan…" */
+
+/* Bilahnya memakai --tunda yang diisi view dari config, jadi panjangnya
+   selalu sama dengan lama meta refresh sebenarnya. Kalau angkanya diubah di
+   config, bilah ini ikut tanpa perlu disetel ulang di sini.
+   linear, bukan easing: ini penanda waktu, bukan hiasan — melambat di ujung
+   akan membuatnya berbohong soal sisa waktu. */
+.alih__bar__isi {
+    animation: alih-maju var(--tunda, 2s) linear both;
+}
+
+@keyframes alih-maju {
+    from { transform: scaleX(0); }
+    to { transform: scaleX(1); }
+}
+
+/* Kartu layar antara muncul seperti popup, bukan sekadar ada di sana. */
+.alih__kartu {
+    animation: alih-popup 420ms var(--ease-out) both;
+}
+
+@keyframes alih-popup {
+    0% { opacity: 0; transform: scale(.9) translateY(10px); }
+    70% { opacity: 1; transform: scale(1.015) translateY(0); }
+    100% { opacity: 1; transform: none; }
+}

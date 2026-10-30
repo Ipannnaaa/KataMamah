@@ -1,0 +1,21 @@
+# Semua request yang bukan file nyata diarahkan ke front controller.
+RewriteEngine On
+
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^ index.php [QSA,L]
+
+# Jangan sajikan file tersembunyi atau berkas sumber.
+<FilesMatch "^\.|\.(sql|md|lock|json)$">
+    Require all denied
+</FilesMatch>
+
+# Aturan folder unggahan ada di public/uploads/.htaccess, bukan di sini.
+# Sebelumnya "php_flag engine off" dipasang di berkas ini dengan maksud
+# mengamankan unggahan, padahal cakupannya seluruh web root: di Apache
+# dengan mod_php, PHP 8 cocok dengan <IfModule mod_php.c> dan seluruh
+# aplikasi berhenti dijalankan — index.php ikut disajikan sebagai teks.
+# Server bawaan PHP mengabaikan .htaccess, jadi itu tidak pernah terlihat
+# selama pengembangan.
+
+Options -Indexes
