@@ -635,3 +635,30 @@ tes otomatisnya; serta kunci kuota `FOR UPDATE` di bawah beban bersamaan.
 - **Zona waktu** diset `Asia/Jakarta` di `config/app.php`.
 - Kode antrean memakai Crockford base32 tanpa huruf I, L, O, dan U agar tidak
   tertukar saat didikte.
+
+---
+
+## 8. Lisensi
+
+Kode proyek ini berlisensi **MIT** — lihat [`LICENSE`](LICENSE). Siapa pun boleh
+memakai, mengubah, dan mendistribusikannya, asalkan pemberitahuan hak ciptanya
+ikut disertakan.
+
+MIT itu berlaku untuk kode yang ditulis di proyek ini saja. Tiga hal di dalam
+repo ini punya lisensinya sendiri dan **tidak** berubah karena ada berkas
+`LICENSE` di akar:
+
+- **PHPMailer** di `app/Vendor/PHPMailer` berlisensi **LGPL-2.1**, dan berkas
+  `LICENSE`-nya ikut disalin di folder itu — jangan dihapus. LGPL mengizinkan
+  pemakaian seperti ini, yaitu disalin apa adanya tanpa diubah, selama
+  lisensinya tetap menyertainya. Bila suatu saat PHPMailer-nya Anda modifikasi,
+  hasil modifikasi itu tetap LGPL, bukan MIT.
+- **Data lokasi** di `config/` berasal dari OpenStreetMap: © kontributor
+  OpenStreetMap, berlisensi **ODbL 1.0**. Atribusinya wajib tampil dan sudah
+  dirender di bawah peta — jangan dihapus dari tampilan.
+- **Dasar hukum** tarif dan syarat berkas yang dikutip di basis data adalah
+  peraturan pemerintah. Kutipannya rujukan, bukan karya proyek ini.
+
+Akun demo di `database/seed.php` beserta sandi `tuban12345` adalah data contoh,
+bukan bagian dari lisensi apa pun. Ganti sebelum dipasang di server yang bisa
+diakses umum.

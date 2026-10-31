@@ -170,3 +170,11 @@ tests/      smoke.php, flow.ps1, penampung SMTP uji
   kantor masing-masing.
 - **Pembayaran** masih diverifikasi admin secara manual; belum ada QRIS/VA.
 - **Pemberitahuan** lewat email atau WhatsApp selain tautan verifikasi.
+
+---
+
+## Lisensi
+
+Kode: **MIT** ([`LICENSE`](LICENSE)). PHPMailer di `app/Vendor` tetap LGPL-2.1,
+dan data lokasi dari OpenStreetMap tetap ODbL — atribusi di bawah peta jangan
+dihapus. Rinciannya di [`README.md`](README.md).
