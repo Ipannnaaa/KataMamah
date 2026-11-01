@@ -1,6 +1,6 @@
 # KataMamah
 
-Nama folder kerja untuk **Tuban Civic Map** — situs informasi layanan publik
+Nama folder kerja untuk **Tuban Civic Map**. Situs informasi layanan publik
 dan pemesanan antrean untuk Kabupaten Tuban.
 
 Berkas ini ringkasan cepat: apa isinya dan cara menjalankannya.
@@ -37,7 +37,7 @@ Butuh **XAMPP** (PHP 8.0+ dan MariaDB). Tidak memakai Composer.
 **1. Hidupkan Apache/MySQL dari XAMPP Control Panel.** Kalau MySQL mati,
 seluruh halaman memberi galat 500.
 
-**2. Siapkan `.env`** — salin dari contohnya lalu sesuaikan:
+**2. Siapkan `.env`**, salin dari contohnya lalu sesuaikan:
 
 ```bash
 cp .env.example .env
@@ -46,7 +46,7 @@ cp .env.example .env
 Untuk server bawaan PHP, isi `APP_URL=http://localhost:8080` dan
 `APP_BASE_PATH=` kosong.
 
-**3. Nyalakan ekstensi `gd`** di `C:\xampp\php\php.ini` — hapus titik koma
+**3. Nyalakan ekstensi `gd`** di `C:\xampp\php\php.ini`, hapus titik koma
 pada baris `;extension=gd`. Tanpa itu foto gedung yang diunggah tidak
 dikecilkan.
 
@@ -76,25 +76,25 @@ sungguhan.
 |---|---|
 | Super admin | `superadmin@tcm.test` |
 | Admin kantor | `admin@tcm.test` |
-| Petugas | `petugas1@tcm.test` · `petugas2@tcm.test` · `petugas3@tcm.test` |
-| Warga | `warga1@tcm.test` · `warga2@tcm.test` · `warga3@tcm.test` |
+| Petugas | `petugas1@tcm.test`, `petugas2@tcm.test`, `petugas3@tcm.test` |
+| Warga | `warga1@tcm.test`, `warga2@tcm.test`, `warga3@tcm.test` |
 
 ---
 
 ## Alur yang paling sering dipakai
 
-**Mengambil antrean** — buka `/peta`, klik kecamatan, pilih kantor, tekan
+**Mengambil antrean.** Buka `/peta`, klik kecamatan, pilih kantor, tekan
 **Daftar antrean**. Pilih layanan, tanggal, dan sesi; centang berkas yang
-sudah siap dan unggah yang bertanda *unggah*. Kode pemesanan muncul di akhir
-— simpan, itu satu-satunya cara melacak tanpa akun.
+sudah siap dan unggah yang bertanda *unggah*. Kode pemesanan muncul di akhir.
+Simpan, itu satu-satunya cara melacak tanpa akun.
 
-**Melacak antrean** — `/cek-antrean`, masukkan kodenya. Nama ditampilkan
+**Melacak antrean.** Buka `/cek-antrean`, masukkan kodenya. Nama ditampilkan
 tersamar.
 
-**Petugas menangani** — masuk, buka `/petugas`, tekan **Terima** pada
+**Petugas menangani.** Masuk, buka `/petugas`, tekan **Terima** pada
 antrean di tab *Baru*, lalu ubah statusnya sampai selesai.
 
-**Admin mengubah data kantor** — `/admin/landmark`, pilih kantornya dari
+**Admin mengubah data kantor.** Buka `/admin/landmark`, pilih kantornya dari
 daftar kiri. Di situ ada data kantor, foto gedung, dan seluruh layanan
 beserta syarat berkasnya.
 
@@ -111,7 +111,7 @@ pengiriman email harus jalan. Isi bagian `MAIL_*` di `.env` (contohnya ada
 di `.env.example`).
 
 Untuk mencoba tanpa SMTP sungguhan, pakai penampung uji yang sudah
-disertakan — ia menerima email betulan lewat SMTP dan menyimpannya sebagai
+disertakan. Penampung itu menerima email betulan lewat SMTP dan menyimpannya sebagai
 berkas:
 
 ```bash
@@ -137,7 +137,7 @@ pwsh tests/flow.ps1
 
 `smoke.php` tidak memerlukan basis data. `flow.ps1` menguji aplikasi yang
 sedang berjalan dari ujung ke ujung dan menyalakan penampung SMTP-nya
-sendiri — jadi MySQL dan server harus hidup lebih dulu.
+sendiri, jadi MySQL dan server harus hidup lebih dulu.
 
 Menjalankan `flow.ps1` berkali-kali berturut-turut akan menabrak pembatas
 laju `/cek-antrean`. Bila ada yang gagal di bagian 9, kosongkan dulu isi
@@ -166,7 +166,7 @@ tests/      smoke.php, flow.ps1, penampung SMTP uji
 
 - **Foto gedung** belum ada satu pun; harus dipotret sendiri atau diminta ke
   instansinya.
-- **268 tarif** masih bertanda "Perlu dikonfirmasi" — butuh konfirmasi ke
+- **268 tarif** masih bertanda "Perlu dikonfirmasi", butuh konfirmasi ke
   kantor masing-masing.
 - **Pembayaran** masih diverifikasi admin secara manual; belum ada QRIS/VA.
 - **Pemberitahuan** lewat email atau WhatsApp selain tautan verifikasi.
@@ -176,5 +176,5 @@ tests/      smoke.php, flow.ps1, penampung SMTP uji
 ## Lisensi
 
 Kode: **MIT** ([`LICENSE`](LICENSE)). PHPMailer di `app/Vendor` tetap LGPL-2.1,
-dan data lokasi dari OpenStreetMap tetap ODbL — atribusi di bawah peta jangan
+dan data lokasi dari OpenStreetMap tetap ODbL. Atribusi di bawah peta jangan
 dihapus. Rinciannya di [`README.md`](README.md).
