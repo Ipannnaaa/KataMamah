@@ -1,7 +1,81 @@
-# Tuban Civic Map — Skeleton PHP
+# Tuban Civic Map
 
-Portal informasi & antrean layanan publik. Spesifikasi lengkap ada di
-[BRIEF.md](BRIEF.md); file ini hanya cara memasang dan status pekerjaannya.
+Situs informasi layanan publik dan pemesanan antrean untuk Kabupaten Tuban.
+Warga bisa menelusuri 132 kantor layanan lewat peta, membaca syarat berkas
+beserta biaya dan dasar hukumnya, lalu mengambil antrean tanpa perlu akun.
+
+---
+
+## Tech stack
+
+| Lapis | Yang dipakai |
+|---|---|
+| Bahasa | PHP 8.0 — tanpa framework, tanpa Composer |
+| Pola | MVC buatan sendiri: router, controller, model, service, view |
+| Autoload | PSR-4 sendiri di `bootstrap.php` |
+| Basis data | MariaDB 10.4 / MySQL 8 lewat PDO prepared statement |
+| Tampilan | HTML + CSS murni (tanpa Bootstrap/Tailwind) dan JavaScript vanilla |
+| Peta | SVG digambar sendiri dari GeoJSON OpenStreetMap — tanpa Leaflet maupun Google Maps |
+| Email | PHPMailer 6.9.3, disalin ke `app/Vendor` karena tidak memakai Composer |
+| Server | Apache (XAMPP) atau server bawaan PHP |
+
+## Cara menjalankan
+
+**1 · Clone**
+
+```bash
+git clone https://github.com/Ipannnaaa/KataMamah.git
+cd KataMamah
+```
+
+**2 · Install** — tidak ada `composer install` atau `npm install`; yang perlu
+disiapkan hanya konfigurasi dan basis data.
+
+```bash
+cp .env.example .env
+C:\xampp\mysql\bin\mysql.exe -u root < database/schema.sql
+C:\xampp\php\php.exe database/seed.php
+```
+
+Untuk server bawaan PHP, isi `APP_URL=http://localhost:8080` dan biarkan
+`APP_BASE_PATH=` kosong di `.env`. Nyalakan juga ekstensi `gd` di
+`C:\xampp\php\php.ini` (hapus titik koma pada `;extension=gd`) agar foto
+gedung yang diunggah ikut dikecilkan.
+
+**3 · Run**
+
+```bash
+C:\xampp\php\php.exe -S localhost:8080 -t public
+```
+
+Buka <http://localhost:8080>. Akun demo bersandi `tuban12345`:
+`superadmin@tcm.test`, `admin@tcm.test`, `petugas1@tcm.test`, `warga1@tcm.test`.
+
+## Progress saat ini
+
+**Sudah jalan.** Beranda, peta kabupaten dan per kecamatan, halaman kantor
+beserta layanan dan syarat berkasnya, pencarian, pengambilan antrean tanpa
+akun dengan unggah berkas, pelacakan antrean lewat kode, registrasi dan login
+warga dengan verifikasi email, halaman akun, chat warga–petugas, panel petugas,
+serta panel admin dan super admin lengkap dengan rekap dan penanganan aduan.
+Total 28 layar di empat peran.
+
+**Isi datanya nyata**, bukan contoh: 132 kantor layanan Kabupaten Tuban diambil
+dari OpenStreetMap, dengan 631 layanan dan 1.341 syarat berkas yang masing-masing
+membawa dasar hukumnya.
+
+**Belum ada.** Foto gedung belum dipasang satu pun; 268 tarif masih bertanda
+"Perlu dikonfirmasi" karena belum dikonfirmasi ke kantor terkait; pembayaran
+masih diverifikasi admin secara manual, belum ada QRIS atau virtual account;
+pemberitahuan lewat WhatsApp belum ada.
+
+**Pengujian.** 43 pemeriksaan smoke dan 238 pemeriksaan alur ujung-ke-ujung,
+semuanya lolos. Lihat bagian 6.
+
+---
+
+Penjelasan mendalam tiap bagian ada di bawah ini; spesifikasi awalnya di
+[BRIEF.md](BRIEF.md), dan ringkasan pemakaian sehari-hari di [read.md](read.md).
 
 ---
 
