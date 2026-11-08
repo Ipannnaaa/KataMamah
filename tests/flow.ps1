@@ -59,6 +59,21 @@ function Token([string]$html) {
     throw 'token CSRF tidak ditemukan di halaman'
 }
 
+# Tanggal pertama yang benar-benar bisa dipesan.
+#
+# Hari tutup dan hari yang kuotanya sudah habis tetap dirender sebagai
+# input, hanya saja disabled. Mengambil tanggal pertama begitu saja membuat
+# seluruh uji pemesanan gagal setiap kali skrip ini dijalankan pada hari
+# libur, dan kegagalannya menyesatkan: yang salah ujinya, bukan aplikasinya.
+function TanggalTerbuka([string]$html) {
+    foreach ($m in [regex]::Matches($html, '(?s)<input\b[^>]*name="queue_date"[^>]*>')) {
+        if ($m.Value -notmatch '\bdisabled\b' -and $m.Value -match 'value="(\d{4}-\d{2}-\d{2})"') {
+            return $Matches[1]
+        }
+    }
+    return ''
+}
+
 # Layar antara "Mengalihkan…" berpindah lewat <meta http-equiv="refresh">.
 # Peramban mengikutinya sendiri; Invoke-WebRequest tidak, jadi di sini
 # dikerjakan manual supaya uji ini melihat apa yang dilihat pengunjung.
@@ -125,9 +140,8 @@ if ($form.Content -match $pola) {
 
 Check 'ada layanan dengan berkas wajib unggah' ($serviceId -ne '') "(layanan $serviceId, berkas $reqId)"
 
-$dates = [regex]::Matches($form.Content, 'name="queue_date"\s+value="(\d{4}-\d{2}-\d{2})"')
-Check 'ada pilihan tanggal' ($dates.Count -gt 0) "($($dates.Count) tanggal)"
-$tanggal = $dates[0].Groups[1].Value
+$tanggal = TanggalTerbuka $form.Content
+Check 'ada tanggal yang bisa dipesan' ($tanggal -ne '') "($tanggal)"
 
 "== 5. Berkas wajib yang kosong ditolak =="
 $tanpaBerkas = Invoke-WebRequest -Uri "$base/lokasi/dinas-kependudukan-dan-pencatatan-sipil-kabupaten-tuban/daftar" -Method Post -WebSession $warga.session -UseBasicParsing `
@@ -272,7 +286,13 @@ Check 'riwayat status lengkap' (([regex]::Matches($detail.Content, 'timeline__ti
 
 $rekap = Invoke-WebRequest -Uri "$base/admin/rekap?periode=bulan" -WebSession $admin.session -UseBasicParsing
 Check 'rekap bulan terbuka' ($rekap.Content -match 'Rata-rata tunggu')
-Check 'rekap harian ada isinya' (([regex]::Matches($rekap.Content, '<tbody>')).Count -ge 1)
+
+# Periode "tahun", bukan "bulan". Rekap dibatasi sampai hari ini, sedangkan
+# antrean uji dipesan untuk hari buka berikutnya yang bisa jatuh di bulan
+# depan. Rentang setahun memastikan selalu ada baris untuk diperiksa tanpa
+# bergantung pada tanggal skrip ini dijalankan.
+$rekapTahun = Invoke-WebRequest -Uri "$base/admin/rekap?periode=tahun" -WebSession $admin.session -UseBasicParsing
+Check 'rekap harian ada isinya' (([regex]::Matches($rekapTahun.Content, '<tbody>')).Count -ge 1)
 
 $csv = Invoke-WebRequest -Uri "$base/admin/rekap/export?periode=bulan" -WebSession $admin.session -UseBasicParsing
 $csvType = ($csv.Headers['Content-Type'] -join ';')
@@ -318,8 +338,7 @@ Check 'form daftar terbuka tanpa login' ($tamuForm.StatusCode -eq 200) "(status 
 Check 'formulir meminta data pemohon' ($tamuForm.Content -match 'Data pemohon')
 Check 'field nama tersedia' ($tamuForm.Content -match 'name="nama"')
 
-$tamuDates = [regex]::Matches($tamuForm.Content, 'name="queue_date"\s+value="(\d{4}-\d{2}-\d{2})"')
-$tamuTanggal = $tamuDates[0].Groups[1].Value
+$tamuTanggal = TanggalTerbuka $tamuForm.Content
 $tamuEmail = 'tamu.' + [guid]::NewGuid().ToString('N').Substring(0, 8) + '@contoh.id'
 
 # Identitas kosong harus ditolak.
@@ -835,7 +854,12 @@ Check 'daftar petugas superadmin terisi' ($panelSuper['/admin/petugas'] -match '
 # Hanya sel tanggal di tabel rekap yang dihitung. Judul halaman juga memuat
 # tanggal hari ini, dan mencocokkannya ke seluruh halaman membuat setiap
 # rekap yang memuat hari ini terbaca seperti data ganda.
-$tanggalRekap = [regex]::Matches($panelSuper['/admin/rekap'], '<th scope="row">(\d{1,2} \w+ \d{4})</th>') |
+#
+# Rentangnya setahun, bukan bawaan "hari ini": kalau skrip dijalankan pada
+# hari libur, rekap hari ini memang kosong dan pemeriksaan ini gagal tanpa
+# ada yang rusak.
+$rekapSuper = (Invoke-WebRequest -Uri "$base/admin/rekap?periode=tahun" -WebSession $sadmin.session -UseBasicParsing).Content
+$tanggalRekap = [regex]::Matches($rekapSuper, '<th scope="row">(\d{1,2} \w+ \d{4})</th>') |
     ForEach-Object { $_.Groups[1].Value }
 Check 'rekap superadmin punya baris tanggal' ($tanggalRekap.Count -gt 0)
 Check 'rekap superadmin tidak menampilkan tanggal ganda' `
@@ -984,14 +1008,19 @@ MatikanSink
 # itu hanya tampilan. Yang diuji di sini permintaan POST yang menyebut nilai
 # di luar itu — persis yang dilakukan skrip atau peramban yang disetel orang.
 function AmbilAntrean([hashtable]$ubah, [string]$slug = 'polsek-bulu') {
+    # Formulirnya diambil lebih dulu supaya tanggal bawaannya bisa dipungut
+    # dari halaman itu sendiri, bukan diisi tanggal hari ini yang belum tentu
+    # hari buka.
+    $sesi = $null
+    $form = Invoke-WebRequest -Uri "$base/lokasi/$slug/daftar" -SessionVariable sesi -UseBasicParsing
+
     $isi = @{
-        service_id = '8'; slot_time = '09:00'; note_user = ''; queue_date = (Get-Date).ToString('yyyy-MM-dd')
+        service_id = '8'; slot_time = '09:00'; note_user = ''
+        queue_date = (TanggalTerbuka $form.Content)
         nama = 'Penguji Alur'; email = 'uji-alur@contoh.test'; telepon = '081200001234'; nik = ''; district_id = ''
     }
     foreach ($k in $ubah.Keys) { $isi[$k] = $ubah[$k] }
 
-    $sesi = $null
-    $form = Invoke-WebRequest -Uri "$base/lokasi/$slug/daftar" -SessionVariable sesi -UseBasicParsing
     $hasil = Follow (Invoke-WebRequest -Uri "$base/lokasi/$slug/daftar" -Method Post -WebSession $sesi -UseBasicParsing `
         -Body ($isi + @{ _token = (Token $form.Content) })) $sesi
 
@@ -1056,7 +1085,8 @@ $formLampiran = Invoke-WebRequest -Uri "$base/lokasi/polsek-bulu/daftar" -Sessio
 
 # berkas[1] dan berkas[3] milik layanan di kantor lain.
 $kirimLampiran = Follow (Invoke-WebRequest -Uri "$base/lokasi/polsek-bulu/daftar" -Method Post -WebSession $sesiLampiran -UseBasicParsing -Form @{
-    _token = (Token $formLampiran.Content); service_id = '8'; queue_date = (Get-Date).ToString('yyyy-MM-dd')
+    _token = (Token $formLampiran.Content); service_id = '8'
+    queue_date = (TanggalTerbuka $formLampiran.Content)
     slot_time = '09:00'; note_user = ''
     nama = 'Penguji Lampiran'; email = 'uji-lampiran@contoh.test'; telepon = '081200005678'; nik = ''; district_id = ''
     'berkas[1]' = (SalinanPdf); 'berkas[3]' = (SalinanPdf)

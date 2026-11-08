@@ -206,6 +206,67 @@ final class RecapService
     }
 
     /**
+     * Deret harian untuk grafik tren, satu titik untuk tiap hari.
+     *
+     * Hari tanpa antrean sengaja diisi nol, bukan dilewati. GROUP BY hanya
+     * mengembalikan hari yang punya baris, dan kalau itu digambar apa
+     * adanya, garisnya melompati hari sepi sehingga trennya terlihat lebih
+     * ramai daripada kenyataannya.
+     *
+     * Rentangnya berdiri sendiri, tidak mengikuti filter periode: tren satu
+     * hari tidak ada artinya sebagai garis.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public static function tren(?int $locationId, int $hari = 30): array
+    {
+        $hari = max(2, min(180, $hari));
+        [$klausa, $lingkup] = self::lingkup($locationId);
+
+        $mulai = date('Y-m-d', strtotime('-' . ($hari - 1) . ' days'));
+        $akhir = date('Y-m-d');
+
+        $rows = DB::all(
+            "SELECT q.queue_date,
+                    COUNT(*) AS total,
+                    SUM(q.status = 'selesai') AS selesai,
+                    SUM(q.status = 'dibatalkan') AS dibatalkan,
+                    AVG(CASE WHEN q.accepted_at IS NOT NULL
+                             THEN TIMESTAMPDIFF(MINUTE, q.created_at, q.accepted_at) END) AS avg_wait
+               FROM queues q
+              WHERE " . $klausa . "
+                AND q.queue_date BETWEEN ? AND ?
+           GROUP BY q.queue_date",
+            array_merge($lingkup, [$mulai, $akhir])
+        );
+
+        $per = [];
+
+        foreach ($rows as $row) {
+            $per[(string) $row['queue_date']] = $row;
+        }
+
+        $out = [];
+
+        for ($i = 0; $i < $hari; $i++) {
+            $tanggal = date('Y-m-d', strtotime($mulai . ' +' . $i . ' days'));
+            $row = $per[$tanggal] ?? null;
+
+            $out[] = [
+                'tanggal' => $tanggal,
+                'total' => (int) ($row['total'] ?? 0),
+                'selesai' => (int) ($row['selesai'] ?? 0),
+                'dibatalkan' => (int) ($row['dibatalkan'] ?? 0),
+                'tunggu' => $row === null || $row['avg_wait'] === null
+                    ? null
+                    : (int) round((float) $row['avg_wait']),
+            ];
+        }
+
+        return $out;
+    }
+
+    /**
      * Rekap harian: dipakai tabel "rekap per hari" dan export CSV.
      *
      * @return array<int, array<string, mixed>>

@@ -42,8 +42,10 @@ final class AdminController extends Controller
             'paymentTotals' => Payment::totalsToday($locationId),
             'officers' => User::officersAt($locationId),
             'byService' => RecapService::byService($locationId, 'hari'),
+            'tren' => RecapService::tren($locationId, 14),
             'filter' => '',
             'period' => 'hari',
+            'scripts' => ['chart.js'],
         ], 'panel');
     }
 
@@ -122,8 +124,10 @@ final class AdminController extends Controller
             'officers' => User::officersAt($locationId),
             'byService' => RecapService::byService($locationId, $period),
             'byOfficer' => RecapService::byOfficer($locationId, $period),
+            'tren' => RecapService::tren($locationId, 30),
             'filter' => '',
             'period' => $period,
+            'scripts' => ['chart.js'],
         ], 'panel');
     }
 

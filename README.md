@@ -74,7 +74,9 @@ kecamatan, halaman kantor lengkap dengan layanan dan syarat berkasnya,
 pencarian, ambil antrean tanpa akun dengan unggah berkas, lacak antrean lewat
 kode, daftar dan masuk dengan verifikasi email, halaman akun, chat warga dan
 petugas, panel petugas, serta panel admin dan super admin dengan rekap dan
-penanganan aduan.
+penanganan aduan. Panel admin punya dashboard dengan grafik tren harian dan
+komposisi status, digambar sebagai SVG di server lalu diberi tooltip oleh
+JavaScript.
 
 **Datanya nyata.** 132 kantor layanan Kabupaten Tuban dari OpenStreetMap,
 dengan 631 layanan dan 1.341 syarat berkas.

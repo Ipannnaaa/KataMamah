@@ -20,6 +20,7 @@
  */
 
 $byOfficer = $byOfficer ?? [];
+$tren = $tren ?? [];
 $hourMax = 1;
 
 foreach ($perHour as $row) {
@@ -30,6 +31,15 @@ $serviceMax = 1;
 
 foreach ($byService as $row) {
     $serviceMax = max($serviceMax, $row['total']);
+}
+
+// Bar per petugas dulu ikut memakai $serviceMax, padahal itu angka
+// tertinggi antarlayanan. Akibatnya batang petugas tersibuk tidak pernah
+// penuh dan perbandingan antarpetugas jadi sulit dibaca.
+$officerMax = 1;
+
+foreach ($byOfficer as $row) {
+    $officerMax = max($officerMax, $row['total']);
 }
 
 ?>
@@ -63,13 +73,48 @@ foreach ($byService as $row) {
         <p class="card__text">Dipakai untuk menata jumlah petugas per sesi.</p>
         <ul class="columns">
             <?php foreach ($perHour as $row) : ?>
-                <li class="column">
+                <li class="column"
+                    data-judul="Pukul <?= e($row['label']) ?>.00"
+                    data-isi="<?= e($row['total'] . ' antrean masuk') ?>">
                     <span class="column__value"><?= e((string) $row['total']) ?></span>
                     <span class="column__bar" style="height: <?= e((string) round(($row['total'] / $hourMax) * 100)) ?>%"></span>
                     <span class="column__label"><?= e($row['label']) ?></span>
                 </li>
             <?php endforeach; ?>
         </ul>
+    </section>
+<?php endif; ?>
+
+<?php if ($tren !== [] && in_array($focus, ['ringkasan', 'rekap'], true)) : ?>
+    <section class="card">
+        <?= \App\Core\View::partial('grafik-garis', [
+            'id' => 'tren-antrean',
+            'judul' => 'Tren antrean ' . count($tren) . ' hari terakhir',
+            'titik' => $tren,
+            'deret' => [
+                ['kunci' => 'total', 'nama' => 'Total', 'warna' => '#0e6b5c'],
+                ['kunci' => 'selesai', 'nama' => 'Selesai', 'warna' => '#1f5fa8'],
+                ['kunci' => 'dibatalkan', 'nama' => 'Dibatalkan', 'warna' => '#a64f12'],
+            ],
+        ]) ?>
+        <p class="card__text">
+            Arahkan kursor ke grafik untuk melihat angka per hari, termasuk rata-rata
+            waktu tunggu. Klik nama seri untuk menyembunyikannya.
+        </p>
+    </section>
+
+    <section class="card">
+        <?= \App\Core\View::partial('grafik-donat', [
+            'id' => 'komposisi-status',
+            'judul' => 'Komposisi status ' . mb_strtolower((string) $summary['label']),
+            'bagian' => [
+                ['nama' => 'Menunggu ditinjau', 'nilai' => (int) $summary['baru'], 'warna' => '#8a978f'],
+                ['nama' => 'Diterima petugas', 'nilai' => (int) $summary['ditinjau'], 'warna' => '#1f5fa8'],
+                ['nama' => 'Sedang ditangani', 'nilai' => (int) $summary['ditangani'], 'warna' => '#0e6b5c'],
+                ['nama' => 'Selesai', 'nilai' => (int) $summary['selesai'], 'warna' => '#09453b'],
+                ['nama' => 'Dibatalkan', 'nilai' => (int) $summary['dibatalkan'], 'warna' => '#8a2e2e'],
+            ],
+        ]) ?>
     </section>
 <?php endif; ?>
 
@@ -243,7 +288,7 @@ foreach ($byService as $row) {
                     <li class="bar">
                         <span class="bar__label"><?= e($row['label']) ?></span>
                         <span class="bar__track">
-                            <span class="bar__fill" style="width: <?= e((string) round(($row['total'] / $serviceMax) * 100)) ?>%"></span>
+                            <span class="bar__fill" style="width: <?= e((string) round(($row['total'] / $officerMax) * 100)) ?>%"></span>
                         </span>
                         <span class="bar__value"><?= e((string) $row['total']) ?></span>
                     </li>

@@ -90,6 +90,30 @@ function tanggal(?string $date): string
 }
 
 /**
+ * Tanggal pendek Indonesia: 27 Okt. Dipakai label sumbu grafik, yang
+ * tidak muat memuat nama bulan panjang.
+ */
+function tanggal_pendek(?string $date): string
+{
+    if ($date === null || $date === '') {
+        return '-';
+    }
+
+    $bulan = [
+        1 => 'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
+        'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des',
+    ];
+
+    $ts = strtotime($date);
+
+    if ($ts === false) {
+        return '-';
+    }
+
+    return (int) date('j', $ts) . ' ' . $bulan[(int) date('n', $ts)];
+}
+
+/**
  * Nama hari pendek: Sen, Sel, Rab …
  */
 function hari(?string $date): string
