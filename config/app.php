@@ -68,6 +68,10 @@ return [
         'track' => ['max' => 10, 'decay' => 600],
         'chat' => ['max' => 20, 'decay' => 60],
         'report' => ['max' => 5, 'decay' => 900],
+        // Kotak aspirasi lebih ketat daripada aduan fasilitas: aduan menunjuk
+        // kantor tertentu sehingga mudah ditimbang, sedangkan aspirasi bebas
+        // isinya dan lebih menarik untuk dijadikan tempat menumpuk spam.
+        'aspirasi' => ['max' => 3, 'decay' => 900],
         // Mengirim ulang tautan verifikasi. Ketat karena tiap percobaan
         // berarti satu email ke alamat yang ditentukan peminta.
         'verify' => ['max' => 3, 'decay' => 900],

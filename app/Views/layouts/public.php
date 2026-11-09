@@ -76,6 +76,7 @@ use App\Core\View;
         <p>© <?= e(date('Y')) ?> <?= e((string) config('app.name')) ?> · Pemerintah Kabupaten <?= e((string) config('app.wilayah')) ?></p>
         <nav class="nav nav--small" aria-label="Tautan kaki">
             <a href="<?= e(url('/tentang')) ?>">Tentang</a>
+            <a href="<?= e(url('/aspirasi')) ?>">Kotak aspirasi</a>
             <a href="<?= e(url('/cek-antrean')) ?>">Cek antrean</a>
             <a href="<?= e(url('/masuk')) ?>">Masuk petugas</a>
         </nav>

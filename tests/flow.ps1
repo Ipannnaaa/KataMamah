@@ -1114,6 +1114,53 @@ App\Core\DB::run("DELETE FROM queues WHERE user_id IN (SELECT id FROM users WHER
 App\Core\DB::run("DELETE FROM users WHERE email LIKE 'uji-%@contoh.test'");
 "@
 
+"== 38. Kotak aspirasi warga =="
+
+# Aspirasi berlaku se-kabupaten, bukan milik satu kantor. Yang diperiksa di
+# sini terutama batas wewenangnya: admin kantor tidak boleh membukanya.
+$sesiAsp = $null
+$halAsp = Invoke-WebRequest -Uri "$base/aspirasi" -SessionVariable sesiAsp -UseBasicParsing
+Check 'halaman aspirasi terbuka tanpa akun' ($halAsp.Content -match 'name="aspirasi"')
+Check 'tertaut dari kaki halaman' ($halAsp.Content -match 'Kotak aspirasi')
+
+$aspPendek = Follow (Invoke-WebRequest -Uri "$base/aspirasi" -Method Post -WebSession $sesiAsp -UseBasicParsing `
+    -Body @{ _token = (Token $halAsp.Content); topik = 'perbaikan'; aspirasi = 'kurang'; kontak = '' }) $sesiAsp
+Check 'aspirasi di bawah 25 huruf ditolak' ($aspPendek.Content -match 'field-error')
+
+$pesanAsp = 'Uji alur: mohon jam buka Dukcapil hari Jumat diperpanjang sampai pukul 14.00.'
+$halAsp2 = Invoke-WebRequest -Uri "$base/aspirasi" -WebSession $sesiAsp -UseBasicParsing
+
+# Sengaja tidak di-Follow: konfirmasinya ada di layar antara "Mengalihkan",
+# dan sesudah dua detik halamannya berganti ke form kosong lagi.
+$aspKirim = Invoke-WebRequest -Uri "$base/aspirasi" -Method Post -WebSession $sesiAsp -UseBasicParsing `
+    -Body @{ _token = (Token $halAsp2.Content); topik = 'perbaikan'; aspirasi = $pesanAsp; kontak = '' }
+Check 'aspirasi sah dikonfirmasi' ($aspKirim.Content -match 'Aspirasi terkirim')
+
+# Get-ErrorBody tidak membawa sesi, sedangkan yang diuji di sini justru
+# admin yang sudah masuk: tanpa sesi yang terjadi hanya lemparan ke /masuk,
+# bukan penolakan 403 yang ingin dibuktikan.
+$aspAdmin = Invoke-WebRequest -Uri "$base/admin/aspirasi" -WebSession $adminLokasi.session -UseBasicParsing -SkipHttpErrorCheck
+Check 'admin kantor ditolak membuka aspirasi' ([int]$aspAdmin.StatusCode -eq 403) "($([int]$aspAdmin.StatusCode))"
+
+$aspSuper = Invoke-WebRequest -Uri "$base/admin/aspirasi" -WebSession $sadmin.session -UseBasicParsing
+Check 'super admin boleh membukanya' ($aspSuper.Content -match 'Aspirasi warga')
+Check 'aspirasi uji tampil di panel' ($aspSuper.Content -match [regex]::Escape($pesanAsp))
+Check 'menu aspirasi hanya untuk super admin' `
+    (($aspSuper.Content -match 'Aspirasi warga') -and ($panelAdmin['/admin'] -notmatch 'Aspirasi warga'))
+
+if ($aspSuper.Content -match '/admin/aspirasi/(\d+)/status') {
+    $idAsp = $Matches[1]
+    $ubahAsp = Follow (Invoke-WebRequest -Uri "$base/admin/aspirasi/$idAsp/status" -Method Post -WebSession $sadmin.session -UseBasicParsing `
+        -Body @{ _token = (Token $aspSuper.Content); status = 'ditinjau'; catatan = 'Uji alur' }) $sadmin.session
+    Check 'status aspirasi bisa diubah' ($ubahAsp.Content -match 'ditandai')
+}
+
+# Bersihkan aspirasi yang dibuat bagian ini.
+$null = & $Php -r @"
+require '$bootstrap';
+App\Core\DB::run("DELETE FROM aspirations WHERE message LIKE 'Uji alur:%'");
+"@
+
 ''
 '--------------------------------------'
 "lolos: $pass   gagal: $fail   (antrean uji: $kode, tamu: $kodeTamu)"

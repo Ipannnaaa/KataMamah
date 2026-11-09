@@ -20,6 +20,8 @@ $router->get('/peta', 'HomeController@index');
 $router->get('/kecamatan/{slug}', 'HomeController@district');
 $router->get('/lokasi/{slug}', 'LocationController@show');
 $router->get('/tentang', 'PageController@about');
+$router->get('/aspirasi', 'AspirationController@form', ['csrf']);
+$router->post('/aspirasi', 'AspirationController@store', ['csrf']);
 $router->get('/mengalihkan', 'RedirectController@show');
 $router->get('/cari', 'SearchController@page');
 
@@ -88,6 +90,13 @@ $router->get('/admin/rekap/export', 'AdminController@export', $admin);
 $router->get('/admin/aduan', 'AdminController@reports', $admin);
 $router->post('/admin/aduan/{id}/status', 'AdminController@updateReport', $admin);
 $router->get('/admin/petugas', 'AdminController@officers', $admin);
+
+// Aspirasi berlaku se-kabupaten, jadi hanya super admin. Admin kantor
+// tidak berwenang menjawab hal di luar kantornya.
+$superadmin = ['csrf', 'auth', 'role:superadmin'];
+
+$router->get('/admin/aspirasi', 'AdminController@aspirations', $superadmin);
+$router->post('/admin/aspirasi/{id}/status', 'AdminController@updateAspiration', $superadmin);
 
 /* ------------------------------------------------------------------- berkas */
 

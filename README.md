@@ -76,7 +76,8 @@ kode, daftar dan masuk dengan verifikasi email, halaman akun, chat warga dan
 petugas, panel petugas, serta panel admin dan super admin dengan rekap dan
 penanganan aduan. Panel admin punya dashboard dengan grafik tren harian dan
 komposisi status, digambar sebagai SVG di server lalu diberi tooltip oleh
-JavaScript.
+JavaScript. Ada juga kotak aspirasi di `/aspirasi` untuk masukan yang tidak
+menyangkut satu kantor tertentu, dibaca super admin.
 
 **Datanya nyata.** 132 kantor layanan Kabupaten Tuban dari OpenStreetMap,
 dengan 631 layanan dan 1.341 syarat berkas.

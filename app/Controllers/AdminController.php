@@ -10,6 +10,7 @@ use App\Core\DB;
 use App\Core\Request;
 use App\Core\Response;
 use App\Core\Validator;
+use App\Models\Aspiration;
 use App\Models\District;
 use App\Models\FacilityReport;
 use App\Models\Location;
@@ -726,6 +727,59 @@ final class AdminController extends Controller
         return $this->success(
             'Aduan #' . $report['id'] . ' ditandai "' . FacilityReport::labelStatus($status) . '".',
             '/admin/aduan'
+        );
+    }
+
+    /**
+     * Kotak aspirasi warga.
+     *
+     * Tanpa penyaring lokasi, karena aspirasi memang tidak menempel pada
+     * kantor mana pun. Haknya dijaga di routes dengan role:superadmin, bukan
+     * di sini: admin kantor tidak berwenang menjawab hal se-kabupaten.
+     */
+    public function aspirations(Request $request): Response
+    {
+        $filter = $request->str('status');
+
+        if ($filter !== '' && !isset(Aspiration::STATUS[$filter])) {
+            $filter = '';
+        }
+
+        return $this->view('admin/aspirations', [
+            'title' => 'Aspirasi warga',
+            'focus' => 'aspirasi',
+            'aspirations' => Aspiration::forPanel($filter),
+            'counts' => Aspiration::countByStatus(),
+            'filter' => $filter,
+        ], 'panel');
+    }
+
+    public function updateAspiration(Request $request, array $params): Response
+    {
+        $aspirasi = Aspiration::find((int) ($params['id'] ?? 0));
+
+        if ($aspirasi === null) {
+            return $this->failure('Aspirasi tidak ditemukan.', '/admin/aspirasi');
+        }
+
+        $status = $request->str('status');
+
+        if (!isset(Aspiration::STATUS[$status])) {
+            return $this->failure('Status aspirasi tidak dikenal.', '/admin/aspirasi');
+        }
+
+        $catatan = trim($request->str('catatan'));
+
+        Aspiration::setStatus(
+            (int) $aspirasi['id'],
+            $status,
+            $catatan !== '' ? mb_substr($catatan, 0, 2000) : null,
+            (int) Auth::id()
+        );
+
+        return $this->success(
+            'Aspirasi #' . $aspirasi['id'] . ' ditandai "' . Aspiration::labelStatus($status) . '".',
+            '/admin/aspirasi'
         );
     }
 }

@@ -30,6 +30,12 @@ $menu = $isAdmin
         ['Rekap kinerja', '/petugas/rekap', 'rekap'],
     ];
 
+// Aspirasi berlaku se-kabupaten, jadi menunya hanya untuk super admin.
+// Admin kantor yang melihatnya hanya akan menabrak 403 di routes.
+if ($role === 'superadmin') {
+    $menu[] = ['Aspirasi warga', '/admin/aspirasi', 'aspirasi'];
+}
+
 ?>
 <!doctype html>
 <html lang="id">

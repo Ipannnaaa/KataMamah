@@ -16,6 +16,7 @@ CREATE DATABASE IF NOT EXISTS `wia`
 USE `wia`;
 
 DROP TABLE IF EXISTS `email_verifications`;
+DROP TABLE IF EXISTS `aspirations`;
 DROP TABLE IF EXISTS `facility_reports`;
 DROP TABLE IF EXISTS `login_attempts`;
 DROP TABLE IF EXISTS `audit_logs`;
@@ -345,4 +346,36 @@ CREATE TABLE `facility_reports` (
     INDEX `idx_reports_location` (`location_id`, `status`),
     INDEX `idx_reports_status` (`status`, `created_at`),
     INDEX `idx_reports_ip` (`ip`, `created_at`)
+) ENGINE = InnoDB;
+
+
+-- Kotak aspirasi warga: masukan untuk layanan publik Kabupaten Tuban yang
+-- tidak menyangkut satu kantor tertentu.
+--
+-- Sengaja tabel sendiri, bukan facility_reports dengan location_id nullable.
+-- Aduan fasilitas selalu milik satu kantor dan disaring per lokasi di panel
+-- admin; begitu kolom itu boleh NULL, setiap query panel harus ikut
+-- menanganinya, dan satu saja yang terlewat berarti aspirasi se-kabupaten
+-- bocor ke panel admin kantor yang tidak berwenang menanganinya.
+CREATE TABLE `aspirations` (
+    `id`           BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    `user_id`      INT UNSIGNED NULL,
+    `topic`        ENUM('layanan_baru','perbaikan','aplikasi','lainnya')
+                   NOT NULL DEFAULT 'lainnya',
+    `message`      TEXT NOT NULL,
+    -- Kontak opsional: aspirasi anonim tetap diterima.
+    `contact`      VARCHAR(160) NULL,
+    `status`       ENUM('baru','ditinjau','ditindaklanjuti','selesai','ditolak')
+                   NOT NULL DEFAULT 'baru',
+    `admin_note`   TEXT NULL,
+    `handled_by`   INT UNSIGNED NULL,
+    `ip`           VARCHAR(45) NULL,
+    `created_at`   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at`   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT `fk_aspirations_user`
+        FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    CONSTRAINT `fk_aspirations_handler`
+        FOREIGN KEY (`handled_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    INDEX `idx_aspirations_status` (`status`, `created_at`),
+    INDEX `idx_aspirations_ip` (`ip`, `created_at`)
 ) ENGINE = InnoDB;
