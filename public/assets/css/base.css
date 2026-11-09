@@ -10,7 +10,15 @@
     --surface-2: #f0f2f0;
     --ink: #15201c;
     --ink-muted: #5c6b66;
-    --ink-faint: #8a978f;
+
+    /* Dulu #8a978f, yang hanya 3,04:1 terhadap putih. Semua pemakaiannya
+       teks 10-11px, dan WCAG AA menuntut 4,5:1 untuk ukuran itu. Nilai
+       sekarang 4,57:1, yaitu seterang-terangnya yang masih lolos, supaya
+       bedanya dengan --ink-muted tetap terlihat.
+
+       Dikalibrasi untuk --surface. Di atas --surface-2 nilainya turun ke
+       4,06:1, jadi untuk teks di latar itu pakai --ink-muted. */
+    --ink-faint: #6b7970;
     --line: #e2e6e2;
     --line-strong: #cfd8d4;
 
