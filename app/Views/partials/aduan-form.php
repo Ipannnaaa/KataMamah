@@ -10,7 +10,6 @@
  * @var array<string, mixed> $location
  */
 
-use App\Core\Auth;
 use App\Models\FacilityReport;
 
 $perkiraan = ($location['data_source'] ?? 'perkiraan') !== 'osm';
@@ -65,7 +64,7 @@ $perkiraan = ($location['data_source'] ?? 'perkiraan') !== 'osm';
         <label class="field">
             <span class="field__label">Kontak Anda (boleh dikosongkan)</span>
             <input type="text" name="kontak" maxlength="160"
-                   value="<?= e(old('kontak', Auth::check() ? (string) Auth::name() : '')) ?>"
+                   value="<?= e(old('kontak', kontak_saya())) ?>"
                    placeholder="Nomor HP atau email, kalau bersedia dihubungi">
             <span class="side-note">Aduan anonim tetap diterima. Kontak hanya dipakai bila admin perlu bertanya.</span>
             <?php if (errors('kontak')) : ?>

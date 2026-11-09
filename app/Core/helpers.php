@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Core\Auth;
 use App\Core\Config;
 use App\Core\Csrf;
 use App\Core\Session;
@@ -64,6 +65,31 @@ function errors(string $key): ?string
 function rupiah(float|int|string $amount): string
 {
     return 'Rp ' . number_format((float) $amount, 0, ',', '.');
+}
+
+/**
+ * Kontak pengguna yang sedang masuk, untuk mengisi awal kolom kontak pada
+ * form aduan dan aspirasi. Kosong bila belum masuk.
+ *
+ * Kolom itu dulu diisi Auth::name(), padahal labelnya meminta nomor HP atau
+ * email. Nama bukan kontak: admin yang ingin menanyakan detail aduan tidak
+ * bisa berbuat apa-apa dengan nama saja, dan pelapor yang tidak memperhatikan
+ * akan mengirimkannya begitu saja.
+ *
+ * Nomor ponsel didahulukan karena itu yang paling cepat dihubungi; email
+ * dipakai bila nomornya belum diisi.
+ */
+function kontak_saya(): string
+{
+    $user = Auth::user();
+
+    if ($user === null) {
+        return '';
+    }
+
+    $telepon = trim((string) ($user['phone'] ?? ''));
+
+    return $telepon !== '' ? $telepon : trim((string) ($user['email'] ?? ''));
 }
 
 /**
