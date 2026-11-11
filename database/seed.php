@@ -846,6 +846,26 @@ $dukcapil = DB::column(
 if ($dukcapil === null) {
     throw new RuntimeException('Tidak ada kantor berkategori dukcapil di config/fasilitas.php.');
 }
+/*
+ * Satu petugas di luar Dukcapil.
+ *
+ * Tanpa ini hanya satu dari 132 kantor yang punya petugas, dan antrean
+ * yang dipesan di 131 kantor lainnya tidak pernah muncul di papan petugas
+ * mana pun. Dari sisi warga antreannya terlihat tercatat, tetapi tidak ada
+ * yang bisa menanganinya — gejala yang menyesatkan karena kodenya sendiri
+ * bekerja normal.
+ *
+ * Dicari lewat slug dengan cadangan kategori: nama resmi kantor mengikuti
+ * data OSM dan slug-nya bisa berubah, tetapi seed tidak boleh pecah
+ * karenanya.
+ */
+$puskesmas = DB::column('SELECT id FROM locations WHERE slug = ? LIMIT 1', ['puskesmas-bancar'])
+    ?? DB::column('SELECT id FROM locations WHERE category = ? ORDER BY id LIMIT 1', ['puskesmas']);
+
+if ($puskesmas === null) {
+    throw new RuntimeException('Tidak ada kantor berkategori puskesmas di config/fasilitas.php.');
+}
+
 $sandi = password_hash('tuban12345', PASSWORD_DEFAULT);
 
 $userIds = [];
@@ -856,6 +876,7 @@ foreach ([
     ['officer', $dukcapil, 'Bayu Prasetya', 'petugas1@tcm.test', null],
     ['officer', $dukcapil, 'Ratih Kusuma', 'petugas2@tcm.test', null],
     ['officer', $dukcapil, 'Joko Santoso', 'petugas3@tcm.test', null],
+    ['officer', $puskesmas, 'Nur Aisyah', 'petugas4@tcm.test', null],
     ['user', null, 'Rudi Maulana', 'warga1@tcm.test', '3523011203990002'],
     ['user', null, 'Dewi Larasati', 'warga2@tcm.test', '3523014506020003'],
     ['user', null, 'Agus Winarno', 'warga3@tcm.test', '3523012208850004'],

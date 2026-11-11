@@ -64,7 +64,7 @@ diakses umum.
 |---|---|
 | Super admin | `superadmin@tcm.test` |
 | Admin kantor | `admin@tcm.test` |
-| Petugas | `petugas1@tcm.test` |
+| Petugas | `petugas1@tcm.test` (Dukcapil), `petugas4@tcm.test` (Puskesmas Bancar) |
 | Warga | `warga1@tcm.test` |
 
 ## Progress saat ini

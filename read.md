@@ -76,7 +76,7 @@ sungguhan.
 |---|---|
 | Super admin | `superadmin@tcm.test` |
 | Admin kantor | `admin@tcm.test` |
-| Petugas | `petugas1@tcm.test`, `petugas2@tcm.test`, `petugas3@tcm.test` |
+| Petugas | `petugas1@tcm.test`, `petugas2@tcm.test`, `petugas3@tcm.test` (Dukcapil), `petugas4@tcm.test` (Puskesmas Bancar) |
 | Warga | `warga1@tcm.test`, `warga2@tcm.test`, `warga3@tcm.test` |
 
 ---
