@@ -1,25 +1,31 @@
 <?php
 
 /**
- * Halaman setelah mendaftar: "periksa email Anda", sekaligus tempat
- * meminta tautan baru.
+ * Halaman setelah mendaftar: tempat memasukkan kode dari email, sekaligus
+ * tempat meminta kode baru.
+ *
+ * Alamat emailnya ikut dikirim bersama kode, bukan hanya kodenya. Kode enam
+ * angka harus dicocokkan per akun, bukan dicari ke seluruh tabel. Kolomnya
+ * terisi otomatis dari sesi, jadi pengguna yang baru mendaftar tidak perlu
+ * mengetiknya lagi.
  *
  * @var string $email
  * @var bool $siap
- * @var int $jam
+ * @var int $menit
+ * @var int $percobaan
  */
 
 ?>
 <section class="container section section--narrow">
-    <h1 class="page-title">Periksa email Anda</h1>
+    <h1 class="page-title">Masukkan kode verifikasi</h1>
     <p class="lede">
         <?php if ($email !== '') : ?>
-            Tautan verifikasi dikirim ke <strong><?= e($email) ?></strong>.
+            Kode enam angka dikirim ke <strong><?= e($email) ?></strong>.
         <?php else : ?>
-            Tautan verifikasi dikirim ke alamat email yang Anda daftarkan.
+            Kode enam angka dikirim ke alamat email yang Anda daftarkan.
         <?php endif; ?>
-        Bukalah tautan itu untuk mengaktifkan akun — sebelum itu, akunnya belum
-        bisa dipakai masuk.
+        Masukkan kode itu di bawah untuk mengaktifkan akun — sebelum itu,
+        akunnya belum bisa dipakai masuk.
     </p>
 
     <?php if (!$siap) : ?>
@@ -31,6 +37,36 @@
         </div>
     <?php endif; ?>
 
+    <form method="post" action="<?= e(url('/verifikasi/kode')) ?>" class="card form">
+        <?= csrf_field() ?>
+
+        <label class="field">
+            <span class="field__label">Email</span>
+            <input type="email" name="email" value="<?= e(old('email', $email)) ?>"
+                   autocomplete="email" required>
+            <?php if (errors('email')) : ?>
+                <span class="field-error"><?= e((string) errors('email')) ?></span>
+            <?php endif; ?>
+        </label>
+
+        <label class="field">
+            <span class="field__label">Kode verifikasi</span>
+            <input type="text" name="kode" class="kode-input" required
+                   inputmode="numeric" pattern="[0-9]{6}" maxlength="6"
+                   autocomplete="one-time-code" placeholder="000000">
+            <span class="side-note">
+                Enam angka, berlaku <?= e((string) $menit) ?> menit. Salah
+                <?= e((string) $percobaan) ?> kali membuat kodenya hangus dan
+                harus diminta ulang.
+            </span>
+            <?php if (errors('kode')) : ?>
+                <span class="field-error"><?= e((string) errors('kode')) ?></span>
+            <?php endif; ?>
+        </label>
+
+        <button class="btn btn--primary" type="submit">Verifikasi</button>
+    </form>
+
     <div class="card">
         <h2 class="card__title">Emailnya belum sampai?</h2>
         <ul class="steps">
@@ -39,30 +75,26 @@
             <li>Pastikan alamatnya tidak salah ketik.</li>
         </ul>
         <p class="card__text">
-            Tautan berlaku <?= e((string) $jam) ?> jam dan hanya sekali pakai.
-            Meminta yang baru membuat tautan lama batal.
+            Meminta kode baru membuat kode lama batal.
         </p>
-    </div>
 
-    <form method="post" action="<?= e(url('/verifikasi/kirim-ulang')) ?>" class="card form">
-        <?= csrf_field() ?>
+        <form method="post" action="<?= e(url('/verifikasi/kirim-ulang')) ?>" class="form">
+            <?= csrf_field() ?>
 
-        <label class="field">
-            <span class="field__label">Email</span>
-            <input type="email" name="email" value="<?= e(old('email', $email)) ?>" autocomplete="email" required>
-            <span class="side-note">
-                Demi keamanan, jawabannya sama saja apakah alamat itu terdaftar
-                atau tidak.
-            </span>
-            <?php if (errors('email')) : ?>
-                <span class="field-error"><?= e((string) errors('email')) ?></span>
-            <?php endif; ?>
-        </label>
+            <label class="field">
+                <span class="field__label">Email</span>
+                <input type="email" name="email" value="<?= e($email) ?>" autocomplete="email" required>
+                <span class="side-note">
+                    Demi keamanan, jawabannya sama saja apakah alamat itu terdaftar
+                    atau tidak.
+                </span>
+            </label>
 
-        <button class="btn btn--primary" type="submit">Kirim tautan baru</button>
+            <button class="btn btn--ghost" type="submit">Kirim kode baru</button>
+        </form>
 
         <p class="side-note">
             Sudah terverifikasi? <a href="<?= e(url('/masuk')) ?>">Masuk ke akun</a>
         </p>
-    </form>
+    </div>
 </section>

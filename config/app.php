@@ -72,9 +72,13 @@ return [
         // kantor tertentu sehingga mudah ditimbang, sedangkan aspirasi bebas
         // isinya dan lebih menarik untuk dijadikan tempat menumpuk spam.
         'aspirasi' => ['max' => 3, 'decay' => 900],
-        // Mengirim ulang tautan verifikasi. Ketat karena tiap percobaan
+        // Mengirim ulang kode verifikasi. Ketat karena tiap percobaan
         // berarti satu email ke alamat yang ditentukan peminta.
         'verify' => ['max' => 3, 'decay' => 900],
+        // Memasukkan kode. Tiap kode sudah hangus setelah lima kali salah,
+        // tetapi batas per akun saja tidak menahan orang yang berpindah-pindah
+        // akun untuk mencoba satu tebakan di tiap akun.
+        'verify_code' => ['max' => 10, 'decay' => 900],
     ],
 
     'queue' => [

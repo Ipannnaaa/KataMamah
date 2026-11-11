@@ -121,9 +121,11 @@ sedangkan diisi `0` berarti memang gratis menurut peraturan. Keduanya tampil
 berbeda di halaman kantor, jadi jangan menulis 0 untuk tarif yang belum pasti.
 
 **Verifikasi email.** Akun baru tidak bisa masuk sebelum emailnya
-diverifikasi, jadi bagian `MAIL_*` di `.env` harus diisi. Untuk mencoba tanpa
-SMTP sungguhan, jalankan `tests/smtp-sink.php 1025 600` lalu arahkan
-`MAIL_HOST=127.0.0.1` dan `MAIL_PORT=1025`.
+diverifikasi, jadi bagian `MAIL_*` di `.env` harus diisi. Verifikasinya memakai
+kode enam angka yang berlaku 15 menit dan hangus setelah lima kali salah, bukan
+tautan. Untuk mencoba tanpa SMTP sungguhan, jalankan
+`tests/smtp-sink.php 1025 600`, arahkan `MAIL_HOST=127.0.0.1` dan
+`MAIL_PORT=1025`, lalu baca kodenya dengan `tests/read-sink.php kode`.
 
 **Nama folder berkurung siku.** Kalau proyek ini ditaruh di dalam folder yang
 namanya memuat `[` dan `]`, `glob()` membacanya sebagai pola dan mengembalikan

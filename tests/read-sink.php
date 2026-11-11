@@ -5,19 +5,19 @@ declare(strict_types=1);
 /**
  * Membaca email terakhir yang ditampung tests/smtp-sink.php.
  *
- * Badan email dikodekan base64 oleh PHPMailer, jadi mencari tautan dengan
+ * Badan email dikodekan base64 oleh PHPMailer, jadi mencari kode dengan
  * regex pada berkas mentah tidak akan menemukan apa-apa — berkasnya diurai
  * di sini supaya skrip uji tidak perlu tahu soal MIME.
  *
  * Jalankan:
- *     php tests/read-sink.php tautan   # cetak URL verifikasi terakhir
+ *     php tests/read-sink.php kode     # cetak kode verifikasi terakhir
  *     php tests/read-sink.php kepada   # cetak alamat penerima
  *     php tests/read-sink.php jumlah   # cetak banyaknya email tertampung
  *     php tests/read-sink.php isi      # cetak badan teksnya
  */
 
 $dir = __DIR__ . '/../storage/logs/smtp-sink';
-$apa = (string) ($argv[1] ?? 'tautan');
+$apa = (string) ($argv[1] ?? 'kode');
 
 /*
  * scandir, bukan glob.
@@ -56,7 +56,7 @@ if ($apa === 'kepada') {
 
 /*
  * Ambil bagian text/plain, lalu kembalikan dari base64 bila perlu.
- * Cukup bagian pertama: isi HTML dan teksnya membawa tautan yang sama.
+ * Cukup bagian pertama: isi HTML dan teksnya membawa kode yang sama.
  */
 $isi = '';
 
@@ -80,9 +80,15 @@ if ($apa === 'isi') {
     exit(0);
 }
 
-if (preg_match('#https?://\S*/verifikasi/[0-9a-f]{64}#', $isi, $m) !== 1) {
-    fwrite(STDERR, "tautan verifikasi tidak ditemukan di email terakhir\n");
+/*
+ * Kode dicari sebagai enam angka yang berdiri sendiri. Dibatasi (?<!\d)
+ * dan (?!\d) supaya tidak memungut potongan dari angka yang lebih panjang,
+ * dan tag HTML dibuang lebih dulu supaya kode warna pada gaya inline tidak
+ * ikut terbaca sebagai angka.
+ */
+if (preg_match('/(?<!\d)(\d{6})(?!\d)/', strip_tags($isi), $m) !== 1) {
+    fwrite(STDERR, "kode verifikasi tidak ditemukan di email terakhir\n");
     exit(1);
 }
 
-echo $m[0], "\n";
+echo $m[1], "\n";

@@ -7,72 +7,111 @@ namespace App\Models;
 use App\Core\DB;
 
 /**
- * Tautan verifikasi email.
+ * Kode verifikasi email.
  *
- * Token aslinya tidak pernah disimpan — hanya SHA-256-nya. Yang memegang
- * basis data karena itu tidak bisa menyusun ulang tautan yang masih
- * berlaku; satu-satunya salinan token ada di email yang sudah terkirim.
+ * Kode aslinya tidak pernah disimpan, hanya hash bcrypt-nya. Yang memegang
+ * basis data karena itu tidak bisa membaca kode yang masih berlaku.
  *
- * SHA-256 cukup di sini (bukan password_hash) karena tokennya 32 byte acak
- * dari random_bytes: tidak ada yang bisa ditebak, jadi hash lambat tidak
- * menambah apa pun selain beban saat memverifikasi.
+ * Bcrypt, bukan SHA-256 seperti token panjang yang dipakai sebelumnya.
+ * Token 32 byte acak tidak mungkin ditebak sehingga hash cepat sudah cukup,
+ * tetapi kode enam angka hanya punya sejuta kemungkinan: dengan SHA-256,
+ * basis data yang bocor bisa dicocokkan habis dalam hitungan detik.
+ *
+ * Tiga hal menahan penebakan, dan ketiganya diperlukan:
+ *   1. Kode dicari per akun, tidak pernah global. Pencarian global membuat
+ *      satu tebakan berlaku untuk semua akun yang sedang menunggu sekaligus.
+ *   2. Salah beberapa kali membuat kodenya hangus.
+ *   3. Umurnya pendek, hitungan menit.
  */
 final class EmailVerification
 {
     /**
-     * Menerbitkan token baru dan mengembalikan token mentahnya — satu-satunya
+     * Menerbitkan kode baru dan mengembalikan kode mentahnya — satu-satunya
      * kesempatan membacanya, karena yang tersimpan hanya hash.
      *
-     * Token lama pengguna yang sama ditandai terpakai lebih dulu: meminta
-     * tautan baru harus membuat tautan lama tidak berlaku, kalau tidak
-     * email lama yang bocor tetap bisa dipakai.
+     * Kode lama pengguna yang sama ditandai terpakai lebih dulu: meminta
+     * kode baru harus membuat yang lama batal, kalau tidak email lama yang
+     * bocor tetap bisa dipakai.
      */
     public static function issue(int $userId, string $ip = ''): string
     {
         self::invalidateFor($userId);
 
-        $token = bin2hex(random_bytes(32));
-        $jam = max(1, (int) config('mail.verification.ttl_hours', 24));
+        // random_int, bukan rand atau mt_rand: yang terakhir bisa diramalkan
+        // dari beberapa keluaran sebelumnya.
+        $kode = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        $menit = self::ttlMenit();
 
         DB::insert('email_verifications', [
             'user_id' => $userId,
-            'token_hash' => hash('sha256', $token),
-            'expires_at' => date('Y-m-d H:i:s', time() + $jam * 3600),
+            'code_hash' => password_hash($kode, PASSWORD_DEFAULT),
+            'expires_at' => date('Y-m-d H:i:s', time() + $menit * 60),
             'ip' => $ip !== '' ? mb_substr($ip, 0, 45) : null,
         ]);
 
-        return $token;
+        return $kode;
     }
 
     /**
-     * Mencari token yang masih berlaku. Mengembalikan null bila tidak ada,
-     * sudah terpakai, atau kedaluwarsa — pemanggil tidak perlu membedakan
-     * ketiganya di hadapan pengunjung.
+     * Mencocokkan kode milik satu akun.
+     *
+     * Mengembalikan baris verifikasinya bila cocok, atau null bila tidak ada
+     * kode hidup, kodenya salah, atau percobaannya sudah habis. Pemanggil
+     * tidak perlu membedakan ketiganya di hadapan pengunjung: membedakannya
+     * hanya memberi tahu penebak sudah sedekat apa dia.
      *
      * @return array<string, mixed>|null
      */
-    public static function findUsable(string $token): ?array
+    public static function match(int $userId, string $kode): ?array
     {
-        if ($token === '' || !ctype_xdigit($token)) {
+        $kode = trim($kode);
+
+        if ($kode === '' || !ctype_digit($kode)) {
             return null;
         }
 
-        return DB::first(
+        $row = DB::first(
             'SELECT * FROM email_verifications
-              WHERE token_hash = ?
+              WHERE user_id = ?
                 AND used_at IS NULL
                 AND expires_at > NOW()
+           ORDER BY id DESC
               LIMIT 1',
-            [hash('sha256', $token)]
+            [$userId]
         );
+
+        if ($row === null) {
+            return null;
+        }
+
+        if ((int) $row['attempts'] >= self::maxPercobaan()) {
+            // Sudah habis jatahnya. Ditutup sekalian supaya tidak perlu
+            // diperiksa lagi pada percobaan berikutnya.
+            self::invalidateFor($userId);
+
+            return null;
+        }
+
+        if (!password_verify($kode, (string) $row['code_hash'])) {
+            DB::run(
+                'UPDATE email_verifications SET attempts = attempts + 1 WHERE id = ?',
+                [$row['id']]
+            );
+
+            return null;
+        }
+
+        return $row;
     }
 
     /**
-     * Menandai token terpakai sekaligus memverifikasi akunnya.
+     * Menandai kode terpakai sekaligus memverifikasi akunnya.
      *
      * Dua tabel sekaligus, jadi dibungkus transaksi: akun yang terverifikasi
-     * tanpa tokennya ikut tertutup berarti tautan yang sama masih bisa
-     * dipakai lagi.
+     * tanpa kodenya ikut tertutup berarti kode yang sama masih bisa dipakai
+     * lagi.
+     *
+     * @param array<string, mixed> $row
      */
     public static function consume(array $row): void
     {
@@ -93,7 +132,7 @@ final class EmailVerification
         });
     }
 
-    /** Berapa menit lagi pengguna ini boleh meminta tautan baru; 0 berarti boleh sekarang. */
+    /** Berapa menit lagi pengguna ini boleh meminta kode baru; 0 berarti boleh sekarang. */
     public static function cooldownMinutes(int $userId, int $jeda = 2): int
     {
         $terakhir = DB::column(
@@ -109,6 +148,16 @@ final class EmailVerification
         $lewat = time() - (int) strtotime((string) $terakhir);
 
         return $lewat >= $jeda * 60 ? 0 : (int) ceil(($jeda * 60 - $lewat) / 60);
+    }
+
+    public static function ttlMenit(): int
+    {
+        return max(1, (int) config('mail.verification.ttl_minutes', 15));
+    }
+
+    public static function maxPercobaan(): int
+    {
+        return max(1, (int) config('mail.verification.max_attempts', 5));
     }
 
     private static function invalidateFor(int $userId): void

@@ -3,23 +3,24 @@
 /**
  * Email konfirmasi penggantian alamat, dikirim ke alamat BARU.
  *
- * Gaya inline seperti emails/verify.php — klien email membuang CSS di
- * <head> dan tidak memuat berkas eksternal.
+ * Memakai kode, sama seperti emails/verify-code.php. Gaya inline karena
+ * klien email membuang CSS di <head> dan tidak memuat berkas eksternal.
  *
  * @var string $nama
  * @var string $lama
  * @var string $baru
- * @var string $tautan
- * @var int $jam
+ * @var string $kode
+ * @var int $menit
  */
 
 $ink = '#13241f';
 $muted = '#5c6b66';
 $hijau = '#146c4a';
 $garis = '#e2e6e2';
+$lembut = '#f0f2f0';
 
 ?>
-<div style="margin:0;padding:24px 12px;background:#f0f2f0;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;">
+<div style="margin:0;padding:24px 12px;background:<?= $lembut ?>;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;">
   <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="max-width:520px;margin:0 auto;background:#ffffff;border:1px solid <?= $garis ?>;border-radius:14px;">
     <tr>
       <td style="padding:28px 28px 8px;">
@@ -31,37 +32,59 @@ $garis = '#e2e6e2';
         </h1>
         <p style="margin:0 0 14px;font-size:15px;line-height:1.6;color:<?= $ink ?>;">
           Ada permintaan memindahkan akun dari <strong><?= e($lama) ?></strong>
-          ke alamat ini. Tekan tombol di bawah bila itu memang Anda.
+          ke alamat ini, <strong><?= e($baru) ?></strong>. Masukkan kode di bawah
+          pada halaman verifikasi untuk menyelesaikannya.
         </p>
-        <p style="margin:0 0 18px;font-size:14px;line-height:1.6;color:<?= $muted ?>;">
-          Sampai tautannya dibuka, <strong><?= e($lama) ?></strong> tetap menjadi
-          alamat akun Anda dan tetap bisa dipakai masuk.
+        <p style="margin:0 0 18px;font-size:15px;line-height:1.6;color:<?= $ink ?>;">
+          Sampai kodenya dimasukkan, <strong><?= e($lama) ?></strong> tetap menjadi
+          alamat akun itu.
         </p>
       </td>
     </tr>
     <tr>
-      <td style="padding:0 28px 20px;">
-        <a href="<?= e($tautan) ?>"
-           style="display:inline-block;padding:13px 22px;background:<?= $hijau ?>;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;border-radius:10px;">
-          Pakai alamat ini
-        </a>
+      <td style="padding:0 28px 18px;">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"
+               style="background:<?= $lembut ?>;border:1px solid <?= $garis ?>;border-radius:12px;">
+          <tr>
+            <td align="center" style="padding:22px 16px;">
+              <div style="font-family:Consolas,Menlo,Courier New,monospace;font-size:34px;font-weight:700;letter-spacing:.22em;color:<?= $ink ?>;">
+                <?= e($kode) ?>
+              </div>
+              <div style="margin-top:8px;font-size:12.5px;color:<?= $muted ?>;">
+                Berlaku <?= e((string) $menit) ?> menit
+              </div>
+            </td>
+          </tr>
+        </table>
       </td>
     </tr>
     <tr>
       <td style="padding:0 28px 24px;">
-        <p style="margin:0 0 14px;font-size:13px;line-height:1.6;color:<?= $muted ?>;">
-          Tombolnya tidak bisa ditekan? Salin alamat ini ke peramban:
-        </p>
-        <p style="margin:0 0 18px;font-size:12.5px;line-height:1.5;word-break:break-all;">
-          <a href="<?= e($tautan) ?>" style="color:<?= $hijau ?>;"><?= e($tautan) ?></a>
-        </p>
-        <p style="margin:0;padding-top:16px;border-top:1px solid <?= $garis ?>;font-size:12.5px;line-height:1.6;color:<?= $muted ?>;">
-          Tautan ini berlaku <?= e((string) $jam) ?> jam dan hanya bisa dipakai sekali.
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"
+               style="background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;">
+          <tr>
+            <td style="padding:14px 16px;">
+              <p style="margin:0;font-size:13px;line-height:1.6;color:#7c2d12;">
+                <strong>Jangan berikan kode ini kepada siapa pun</strong>, termasuk
+                orang yang mengaku petugas <?= e((string) config('app.name')) ?>.
+                Kami tidak pernah menanyakannya lewat telepon, WhatsApp, atau pesan
+                apa pun.
+              </p>
+            </td>
+          </tr>
+        </table>
+
+        <p style="margin:18px 0 0;padding-top:16px;border-top:1px solid <?= $garis ?>;font-size:12.5px;line-height:1.6;color:<?= $muted ?>;">
+          Kode ini hanya bisa dipakai sekali. Meminta kode baru membuat yang lama
+          tidak berlaku.
           <br><br>
-          Bukan Anda yang meminta? Abaikan email ini — tanpa tautan itu ditekan,
-          alamat akunnya tidak berubah.
+          Bukan Anda yang meminta? Abaikan email ini. Tanpa kode itu dimasukkan,
+          alamat akun tidak berubah.
         </p>
       </td>
     </tr>
   </table>
+  <p style="max-width:520px;margin:14px auto 0;font-size:11.5px;line-height:1.5;text-align:center;color:<?= $muted ?>;">
+    Email ini dikirim otomatis. Jangan membalasnya.
+  </p>
 </div>

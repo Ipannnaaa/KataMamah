@@ -39,7 +39,15 @@ return [
     'debug' => (int) env('MAIL_DEBUG', 0),
 
     'verification' => [
-        // Lama tautan verifikasi berlaku, dalam jam.
-        'ttl_hours' => (int) env('MAIL_VERIFY_TTL', 24),
+        // Lama kode verifikasi berlaku, dalam menit.
+        //
+        // Jauh lebih pendek daripada tautan yang dipakai sebelumnya. Kode
+        // enam angka hanya punya sejuta kemungkinan, jadi umur pendek adalah
+        // salah satu dari dua penahan tebakan — yang satunya batas percobaan
+        // di bawah.
+        'ttl_minutes' => (int) env('MAIL_CODE_TTL', 15),
+
+        // Berapa kali salah sebelum kodenya hangus dan harus minta baru.
+        'max_attempts' => (int) env('MAIL_CODE_ATTEMPTS', 5),
     ],
 ];

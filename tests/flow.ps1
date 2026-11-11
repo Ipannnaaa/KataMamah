@@ -65,6 +65,17 @@ function Token([string]$html) {
 # input, hanya saja disabled. Mengambil tanggal pertama begitu saja membuat
 # seluruh uji pemesanan gagal setiap kali skrip ini dijalankan pada hari
 # libur, dan kegagalannya menyesatkan: yang salah ujinya, bukan aplikasinya.
+# Mengirim kode verifikasi.
+#
+# Alamatnya ikut dikirim bersama kodenya, bukan kodenya saja: enam angka
+# hanya punya sejuta kemungkinan, jadi kode dicocokkan per akun dan tidak
+# pernah dicari ke seluruh tabel.
+function KirimKode([string]$email, [string]$kode, [object]$session) {
+    $hal = Invoke-WebRequest -Uri "$base/verifikasi" -WebSession $session -UseBasicParsing
+    return Invoke-WebRequest -Uri "$base/verifikasi/kode" -Method Post -WebSession $session -UseBasicParsing `
+        -Body @{ _token = (Token $hal.Content); email = $email; kode = $kode }
+}
+
 function TanggalTerbuka([string]$html) {
     foreach ($m in [regex]::Matches($html, '(?s)<input\b[^>]*name="queue_date"[^>]*>')) {
         if ($m.Value -notmatch '\bdisabled\b' -and $m.Value -match 'value="(\d{4}-\d{2}-\d{2})"') {
@@ -389,13 +400,13 @@ Check 'registrasi lewat layar Mengalihkan' ($klaim.Content -match 'Akun dibuat')
 $klaim = Follow $klaim $klaimSession
 
 # Akun baru tidak lagi langsung masuk: emailnya harus diverifikasi dulu.
-Check 'diarahkan ke halaman verifikasi' ($klaim.Content -match 'Periksa email Anda')
+Check 'diarahkan ke halaman verifikasi' ($klaim.Content -match 'Masukkan kode verifikasi')
 Check 'akun tamu dinyatakan tergabung' ($klaim.Content -match 'tergabung')
 
-$tautanKlaim = Sink 'tautan'
-Check 'email verifikasi klaim terkirim' ($tautanKlaim -match '/verifikasi/[0-9a-f]{64}')
+$kodeKlaim = Sink 'kode'
+Check 'email verifikasi klaim terkirim' ($kodeKlaim -match '^\d{6}$') "($kodeKlaim)"
 
-$verifKlaim = Follow (Invoke-WebRequest -Uri $tautanKlaim -WebSession $klaimSession -UseBasicParsing) $klaimSession
+$verifKlaim = Follow (KirimKode $tamuEmail $kodeKlaim $klaimSession) $klaimSession
 Check 'klaim terverifikasi' ($verifKlaim.Content -match 'terverifikasi')
 
 $masukKlaim = Invoke-WebRequest -Uri "$base/masuk" -WebSession $klaimSession -UseBasicParsing
@@ -678,15 +689,16 @@ $buatAkun = Invoke-WebRequest -Uri "$base/daftar" -Method Post -WebSession $veri
     password = 'rahasia12345'; password_confirmation = 'rahasia12345'; setuju = '1'
 }
 $halVerif = Follow $buatAkun $verifSesi
-Check 'pendaftaran berujung di halaman verifikasi' ($halVerif.Content -match 'Periksa email Anda')
+Check 'pendaftaran berujung di halaman verifikasi' ($halVerif.Content -match 'Masukkan kode verifikasi')
 Check 'akun baru tidak langsung masuk' ($halVerif.Content -notmatch 'Antrean saya')
 Check 'alamat tujuan disebutkan' ($halVerif.Content -match [regex]::Escape($mailUji))
 
 Check 'email verifikasi sampai ke penampung SMTP' ((Sink 'kepada') -eq $mailUji)
 $isiMail = Sink 'isi'
 Check 'badan email memuat nama penerima' ($isiMail -match 'Warga Uji Verifikasi')
-$tautanUji = Sink 'tautan'
-Check 'tautan verifikasi terbentuk' ($tautanUji -match '/verifikasi/[0-9a-f]{64}$')
+$kodeUji = Sink 'kode'
+Check 'kode verifikasi terbentuk' ($kodeUji -match '^\d{6}$') "($kodeUji)"
+Check 'badan email memperingatkan jangan dibagikan' ($isiMail -match 'Jangan berikan kode ini')
 
 $sesiTolak = $null
 $halMasuk = Invoke-WebRequest -Uri "$base/masuk" -SessionVariable sesiTolak -UseBasicParsing
@@ -696,15 +708,23 @@ Check 'belum terverifikasi tidak bisa masuk' ($masukTolak.Content -match 'belum 
 Check 'form kirim ulang muncul di halaman masuk' ($masukTolak.Content -match 'id="kirim-ulang"')
 
 $sesiVerif = $null
-$bukaTautan = Follow (Invoke-WebRequest -Uri $tautanUji -SessionVariable sesiVerif -UseBasicParsing) $sesiVerif
-Check 'tautan verifikasi diterima' ($bukaTautan.Content -match 'terverifikasi')
-Check 'verifikasi tidak memberi sesi, diminta masuk' ($bukaTautan.Content -match 'Masuk ke akun Anda')
+$null = Invoke-WebRequest -Uri "$base/verifikasi" -SessionVariable sesiVerif -UseBasicParsing
 
-$pakaiUlang = Invoke-WebRequest -Uri $tautanUji -UseBasicParsing
-Check 'tautan hanya sekali pakai' ($pakaiUlang.Content -match 'tidak berlaku lagi')
+$kodeSalah = Follow (KirimKode $mailUji '000000' $sesiVerif) $sesiVerif
+Check 'kode salah ditolak' ($kodeSalah.Content -match 'Kode salah atau sudah tidak berlaku')
 
-$tokenNgawur = Invoke-WebRequest -Uri "$base/verifikasi/$('a' * 64)" -UseBasicParsing
-Check 'token karangan ditolak' ($tokenNgawur.Content -match 'tidak berlaku lagi')
+$bukaKode = Follow (KirimKode $mailUji $kodeUji $sesiVerif) $sesiVerif
+Check 'kode verifikasi diterima' ($bukaKode.Content -match 'terverifikasi')
+Check 'verifikasi tidak memberi sesi, diminta masuk' ($bukaKode.Content -match 'Masuk ke akun Anda')
+
+$pakaiUlang = Follow (KirimKode $mailUji $kodeUji $sesiVerif) $sesiVerif
+Check 'kode hanya sekali pakai' ($pakaiUlang.Content -match 'Kode salah atau sudah tidak berlaku')
+
+# Alamat yang tidak terdaftar dijawab persis sama dengan kode yang salah:
+# jawaban yang berbeda akan berubah jadi alat memeriksa alamat mana yang
+# terdaftar di sini.
+$kodeAsing = Follow (KirimKode 'tidak-pernah-ada@contoh.test' '123456' $sesiVerif) $sesiVerif
+Check 'kode untuk alamat asing dijawab sama' ($kodeAsing.Content -match 'Kode salah atau sudah tidak berlaku')
 
 $sesiMasuk = $null
 $halMasuk2 = Invoke-WebRequest -Uri "$base/masuk" -SessionVariable sesiMasuk -UseBasicParsing
@@ -983,8 +1003,12 @@ Check 'alamat lama masih bisa masuk' ($lamaMasihBisa.page.Content -match 'Antrea
 $baruBelumBisa = Login $emailBaru 'sandilain123'
 Check 'alamat baru belum berlaku' (-not ($baruBelumBisa.page.Content -match 'Antrean saya'))
 
+# Kodenya dikirim ke alamat BARU, sedangkan akunnya masih terdaftar dengan
+# alamat lama. Yang diketik di sini alamat baru, persis seperti yang akan
+# dilakukan orang yang menerima emailnya.
 $sesiKonf = $null
-$konfirmasi = Follow (Invoke-WebRequest -Uri (Sink 'tautan') -SessionVariable sesiKonf -UseBasicParsing) $sesiKonf
+$null = Invoke-WebRequest -Uri "$base/verifikasi" -SessionVariable sesiKonf -UseBasicParsing
+$konfirmasi = Follow (KirimKode $emailBaru (Sink 'kode') $sesiKonf) $sesiKonf
 Check 'konfirmasi penggantian diterima' ($konfirmasi.Content -match [regex]::Escape($emailBaru))
 
 $baruBisa = Login $emailBaru 'sandilain123'

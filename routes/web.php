@@ -35,7 +35,7 @@ $router->post('/keluar', 'AuthController@logout', ['csrf', 'auth']);
 // membuka halaman ini atau meminta tautan baru.
 $router->get('/verifikasi', 'VerificationController@notice');
 $router->post('/verifikasi/kirim-ulang', 'VerificationController@resend', ['csrf']);
-$router->get('/verifikasi/{token}', 'VerificationController@confirm');
+$router->post('/verifikasi/kode', 'VerificationController@confirm', ['csrf']);
 
 // Ambil antrean tidak memerlukan akun: warga yang belum masuk mengisi
 // identitasnya langsung di formulir dan menerima kode pemesanan.

@@ -17,9 +17,9 @@
     <div class="note">
         <p>
             <strong>Email Anda akan diverifikasi.</strong>
-            Setelah mendaftar, kami mengirim satu tautan ke alamat itu — akunnya
-            baru bisa dipakai masuk setelah tautannya dibuka. Pastikan alamatnya
-            benar dan bisa Anda akses sekarang.
+            Setelah mendaftar, kami mengirim satu kode enam angka ke alamat itu.
+            Akunnya baru bisa dipakai masuk setelah kode itu dimasukkan. Pastikan
+            alamatnya benar dan bisa Anda akses sekarang.
         </p>
         <p>
             Tidak ingin membuat akun? Antrean juga bisa diambil

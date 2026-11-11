@@ -9,7 +9,7 @@ use App\Models\EmailVerification;
 use RuntimeException;
 
 /**
- * Menerbitkan tautan verifikasi dan mengirimnya.
+ * Menerbitkan kode verifikasi dan mengirimnya.
  *
  * Dipisah dari MailService supaya yang satu tetap soal pengiriman dan yang
  * ini soal verifikasi — keduanya berubah karena alasan yang berbeda.
@@ -17,12 +17,12 @@ use RuntimeException;
 final class VerificationService
 {
     /**
-     * Menerbitkan token baru lalu mengirim emailnya.
+     * Menerbitkan kode baru lalu mengirim emailnya.
      *
      * Melempar RuntimeException bila SMTP belum disetel atau pengiriman
-     * gagal. Token sudah terbit sebelum email dicoba, jadi tautan lama
-     * tetap batal walaupun pengiriman gagal — itu disengaja: lebih baik
-     * pengguna meminta ulang daripada ada dua tautan hidup bersamaan.
+     * gagal. Kode sudah terbit sebelum email dicoba, jadi kode lama tetap
+     * batal walaupun pengiriman gagal. Itu disengaja: lebih baik pengguna
+     * meminta ulang daripada ada dua kode hidup bersamaan.
      *
      * @param array<string, mixed> $user
      */
@@ -32,13 +32,12 @@ final class VerificationService
             throw new RuntimeException('SMTP belum disetel.');
         }
 
-        $token = EmailVerification::issue((int) $user['id'], $ip);
-        $jam = max(1, (int) config('mail.verification.ttl_hours', 24));
+        $kode = EmailVerification::issue((int) $user['id'], $ip);
 
-        $html = View::render('emails/verify', [
+        $html = View::render('emails/verify-code', [
             'nama' => (string) $user['name'],
-            'tautan' => url('/verifikasi/' . $token),
-            'jam' => $jam,
+            'kode' => $kode,
+            'menit' => EmailVerification::ttlMenit(),
         ]);
 
         MailService::send(
@@ -50,12 +49,12 @@ final class VerificationService
     }
 
     /**
-     * Tautan konfirmasi penggantian alamat email.
+     * Kode konfirmasi penggantian alamat email.
      *
      * Dikirim ke alamat BARU (users.pending_email), bukan ke yang lama:
      * yang perlu dibuktikan adalah bahwa alamat baru itu benar-benar bisa
-     * diakses pemiliknya. Alamat lama tetap berlaku sampai tautan ini
-     * dibuka, jadi satu salah ketik tidak mengunci siapa pun.
+     * diakses pemiliknya. Alamat lama tetap berlaku sampai kode ini
+     * dimasukkan, jadi satu salah ketik tidak mengunci siapa pun.
      *
      * @param array<string, mixed> $user
      */
@@ -71,15 +70,14 @@ final class VerificationService
             throw new RuntimeException('SMTP belum disetel.');
         }
 
-        $token = EmailVerification::issue((int) $user['id'], $ip);
-        $jam = max(1, (int) config('mail.verification.ttl_hours', 24));
+        $kode = EmailVerification::issue((int) $user['id'], $ip);
 
         $html = View::render('emails/verify-change', [
             'nama' => (string) $user['name'],
             'lama' => (string) $user['email'],
             'baru' => $tujuan,
-            'tautan' => url('/verifikasi/' . $token),
-            'jam' => $jam,
+            'kode' => $kode,
+            'menit' => EmailVerification::ttlMenit(),
         ]);
 
         MailService::send(

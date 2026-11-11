@@ -50,10 +50,10 @@ $belumVerif = (string) Session::getFlash('email_belum_verif', '');
             <?= csrf_field() ?>
             <h2 class="card__title">Belum menerima emailnya?</h2>
             <p class="card__text">
-                Tautan verifikasi berlaku
-                <?= e((string) max(1, (int) config('mail.verification.ttl_hours', 24))) ?> jam.
-                Kalau sudah lewat atau emailnya tidak pernah sampai, minta yang baru di sini —
-                tautan lama otomatis batal.
+                Kode verifikasi berlaku
+                <?= e((string) max(1, (int) config('mail.verification.ttl_minutes', 15))) ?> menit.
+                Kalau sudah lewat atau emailnya tidak pernah sampai, minta yang baru di sini.
+                Kode lama otomatis batal.
             </p>
 
             <label class="field">
@@ -61,7 +61,7 @@ $belumVerif = (string) Session::getFlash('email_belum_verif', '');
                 <input type="email" name="email" value="<?= e($belumVerif) ?>" autocomplete="email" required>
             </label>
 
-            <button class="btn btn--dark" type="submit">Kirim tautan baru</button>
+            <button class="btn btn--dark" type="submit">Kirim kode baru</button>
         </form>
     <?php endif; ?>
 </section>

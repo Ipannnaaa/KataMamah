@@ -171,14 +171,21 @@ CREATE TABLE `users` (
 CREATE TABLE `email_verifications` (
     `id`         BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     `user_id`    INT UNSIGNED NOT NULL,
-    `token_hash` CHAR(64) NOT NULL UNIQUE,
+    -- Hash bcrypt, bukan SHA-256 seperti token panjang dulu. Kode enam
+    -- angka hanya punya sejuta kemungkinan: kalau basis data bocor,
+    -- sejuta SHA-256 bisa dicoba habis dalam hitungan detik, sedangkan
+    -- sejuta bcrypt tidak.
+    `code_hash`  VARCHAR(255) NOT NULL,
+    -- Percobaan salah. Kode dicari per akun, bukan global, dan hangus
+    -- setelah beberapa kali salah: dua-duanya menahan penebakan.
+    `attempts`   TINYINT UNSIGNED NOT NULL DEFAULT 0,
     `expires_at` DATETIME NOT NULL,
     `used_at`    DATETIME NULL,
-    `ip`         VARCHAR(45) NULL COMMENT 'peminta tautan, untuk menelusuri penyalahgunaan',
+    `ip`         VARCHAR(45) NULL COMMENT 'peminta kode, untuk menelusuri penyalahgunaan',
     `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT `fk_email_verifications_user`
         FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
-    INDEX `idx_email_verifications_user` (`user_id`)
+    INDEX `idx_email_verifications_user` (`user_id`, `used_at`)
 ) ENGINE = InnoDB;
 
 -- ================================================================== antrean

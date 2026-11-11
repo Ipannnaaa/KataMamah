@@ -18,62 +18,117 @@ use App\Services\VerificationService;
 use Throwable;
 
 /**
- * Verifikasi alamat email.
+ * Verifikasi alamat email dengan kode enam angka.
  *
  * Seluruh halaman di sini terbuka tanpa login — justru karena akun yang
  * belum terverifikasi tidak bisa masuk, pemiliknya tidak punya sesi untuk
- * meminta tautan baru.
+ * meminta kode baru.
+ *
+ * Alamat yang sedang menunggu disimpan di sesi, bukan hanya di flash:
+ * flash habis sekali baca, sedangkan halaman ini dimuat ulang setiap kali
+ * kodenya salah. Tanpa itu, pengguna harus mengetik ulang alamatnya pada
+ * setiap percobaan.
  */
 final class VerificationController extends Controller
 {
-    /** Halaman "cek email Anda", sekaligus tempat meminta tautan baru. */
+    private const KUNCI_EMAIL = 'verif_email';
+
+    /** Halaman "masukkan kode", sekaligus tempat meminta kode baru. */
     public function notice(Request $request): Response
     {
         if (Auth::check() && (int) (Auth::user()['is_verified'] ?? 0) === 1) {
             return $this->redirect('/akun');
         }
 
+        $dariFlash = (string) Session::getFlash('email_belum_verif', '');
+
+        if ($dariFlash !== '') {
+            Session::put(self::KUNCI_EMAIL, $dariFlash);
+        }
+
         return $this->view('auth/verify-notice', [
             'title' => 'Verifikasi email',
-            'email' => (string) Session::getFlash('email_belum_verif', ''),
+            'email' => (string) Session::get(self::KUNCI_EMAIL, ''),
             'siap' => MailService::siap(),
-            'jam' => max(1, (int) config('mail.verification.ttl_hours', 24)),
+            'menit' => EmailVerification::ttlMenit(),
+            'percobaan' => EmailVerification::maxPercobaan(),
         ]);
     }
 
     /**
-     * Membuka tautan dari email.
+     * Memeriksa kode yang dimasukkan.
      *
-     * @param array<string, string> $params
+     * Kodenya dicari per akun, tidak pernah global. Enam angka hanya punya
+     * sejuta kemungkinan: pencarian global akan membuat satu tebakan acak
+     * berlaku untuk semua akun yang sedang menunggu sekaligus, dan peluang
+     * kenanya naik sebanding dengan jumlah akun itu.
      */
-    public function confirm(Request $request, array $params): Response
+    public function confirm(Request $request): Response
     {
-        $row = EmailVerification::findUsable((string) ($params['token'] ?? ''));
+        $limit = (array) config('app.rate_limit.verify_code', ['max' => 10, 'decay' => 900]);
+        $key = 'verify-code:' . $request->ip();
 
-        if ($row === null) {
-            // Tidak ada, sudah terpakai, atau kedaluwarsa — ketiganya dijawab
-            // sama. Membedakannya hanya memberi tahu penebak mana yang pernah
-            // ada, tanpa menolong pemilik akun yang sah.
-            Session::flash('error', 'Tautan verifikasi tidak berlaku lagi. Minta tautan baru di bawah.');
+        if (RateLimiter::tooManyAttempts($key, (int) $limit['max'], (int) $limit['decay'])) {
+            $menit = max(1, (int) ceil(RateLimiter::secondsLeft($key) / 60));
 
-            return $this->redirect('/verifikasi');
+            return $this->failure(
+                'Terlalu banyak percobaan. Coba lagi dalam ' . $menit . ' menit.',
+                '/verifikasi'
+            );
         }
 
-        $user = User::find((int) $row['user_id']);
+        $validator = Validator::make($request->all(), [
+            'email' => 'required|email|max:160',
+            'kode' => 'required|digits:6',
+        ], [
+            'email' => 'Email',
+            'kode' => 'Kode verifikasi',
+        ]);
 
-        if ($user === null) {
-            Session::flash('error', 'Akun yang ditautkan sudah tidak ada.');
+        if ($validator->fails()) {
+            return $this->backWithErrors('/verifikasi', $validator->errors(), [
+                'email' => $request->str('email'),
+            ]);
+        }
 
-            return $this->redirect('/verifikasi');
+        RateLimiter::hit($key, (int) $limit['decay']);
+
+        $email = $request->str('email');
+        Session::put(self::KUNCI_EMAIL, $email);
+
+        /*
+         * Dicari juga lewat pending_email. Pada penggantian alamat, kodenya
+         * dikirim ke alamat BARU sementara akunnya masih terdaftar dengan
+         * yang lama — orang yang menerima kode itu wajar mengetik alamat
+         * yang menerimanya, dan tanpa pencarian kedua ini kodenya tidak
+         * akan pernah cocok.
+         */
+        $user = User::findByEmail($email) ?? User::findByPendingEmail($email);
+        $row = $user === null
+            ? null
+            : EmailVerification::match((int) $user['id'], $request->str('kode'));
+
+        /*
+         * Akun tidak ada, tidak punya kode hidup, kodenya salah, atau
+         * jatah percobaannya habis — keempatnya dijawab sama. Membedakannya
+         * memberi tahu penebak alamat mana yang terdaftar dan sudah sedekat
+         * apa tebakannya, tanpa menolong pemilik akun yang sah.
+         */
+        if ($user === null || $row === null) {
+            return $this->failure(
+                'Kode salah atau sudah tidak berlaku. Minta kode baru di bawah.',
+                '/verifikasi'
+            );
         }
 
         /*
-         * Satu tautan, dua maksud. Bila akun punya pending_email, tautan
+         * Satu kode, dua maksud. Bila akun punya pending_email, kode
          * terakhir yang diterbitkan untuknya adalah konfirmasi penggantian
-         * alamat — menerbitkan token baru selalu membatalkan yang lama,
-         * jadi tidak ada dua jenis tautan hidup bersamaan.
+         * alamat — menerbitkan kode baru selalu membatalkan yang lama, jadi
+         * tidak ada dua jenis kode hidup bersamaan.
          */
         $pending = (string) ($user['pending_email'] ?? '');
+        Session::forget(self::KUNCI_EMAIL);
 
         if ($pending !== '') {
             // Alamat itu bisa saja keburu dipakai akun lain sejak diminta.
@@ -96,16 +151,17 @@ final class VerificationController extends Controller
         EmailVerification::consume($row);
 
         /*
-         * Sengaja tidak langsung memberi sesi. Tautan ini melintasi kotak
-         * surat dan bisa saja dibuka di perangkat yang bukan milik pemiliknya
-         * — meminta sandi sekali lagi memastikan yang masuk memang dia.
+         * Sengaja tidak langsung memberi sesi. Kode ini melintasi kotak
+         * surat dan bisa saja dibaca di perangkat yang bukan milik
+         * pemiliknya — meminta sandi sekali lagi memastikan yang masuk
+         * memang dia.
          */
         Session::flash('success', 'Email ' . $user['email'] . ' terverifikasi. Silakan masuk.');
 
         return $this->redirectVia('/masuk', 'Email terverifikasi', 'Membuka halaman masuk…');
     }
 
-    /** Mengirim ulang tautan verifikasi. */
+    /** Mengirim ulang kode verifikasi. */
     public function resend(Request $request): Response
     {
         $limit = (array) config('app.rate_limit.verify', ['max' => 3, 'decay' => 900]);
@@ -128,6 +184,7 @@ final class VerificationController extends Controller
         RateLimiter::hit($key, (int) $limit['decay']);
 
         $email = $request->str('email');
+        Session::put(self::KUNCI_EMAIL, $email);
         $user = User::findByEmail($email);
 
         /*
@@ -136,7 +193,7 @@ final class VerificationController extends Controller
          * saja, jadi jawaban yang berbeda-beda akan berubah menjadi alat
          * untuk memeriksa alamat email mana yang terdaftar di sini.
          */
-        $jawaban = 'Kalau alamat itu terdaftar dan belum terverifikasi, tautan barunya sudah dikirim. '
+        $jawaban = 'Kalau alamat itu terdaftar dan belum terverifikasi, kode barunya sudah dikirim. '
             . 'Periksa juga folder spam.';
 
         if ($user === null || (int) $user['is_verified'] === 1) {

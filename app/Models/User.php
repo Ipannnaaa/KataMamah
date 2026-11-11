@@ -50,6 +50,22 @@ final class User
     }
 
     /**
+     * Akun yang sedang menunggu pindah ke alamat ini.
+     *
+     * Dibutuhkan saat mengonfirmasi penggantian email: kodenya dikirim ke
+     * alamat baru, sedangkan akunnya masih terdaftar dengan alamat lama.
+     * Orang yang menerima kode itu wajar mengetik alamat yang menerimanya,
+     * dan tanpa pencarian ini kodenya tidak akan pernah cocok.
+     */
+    public static function findByPendingEmail(string $email): ?array
+    {
+        return DB::first(
+            'SELECT * FROM users WHERE pending_email = ? LIMIT 1',
+            [strtolower($email)]
+        );
+    }
+
+    /**
      * Akun tamu: dibuat saat warga mengambil antrean tanpa masuk.
      * Kolom password dibiarkan kosong sehingga tidak bisa dipakai login, dan
      * akun yang sama bisa "diklaim" nanti lewat halaman daftar.

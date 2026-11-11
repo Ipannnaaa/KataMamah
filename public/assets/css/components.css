@@ -2135,3 +2135,19 @@ input[type='file']:disabled {
         gap: 14px;
     }
 }
+
+/* Kolom kode verifikasi: angkanya direnggangkan dan dibesarkan supaya
+   mudah dicocokkan dengan yang tertera di email, dan supaya salah ketik
+   satu angka langsung kelihatan. */
+.kode-input {
+    font-family: Consolas, Menlo, 'Courier New', monospace;
+    font-size: 24px;
+    font-weight: 700;
+    letter-spacing: .32em;
+    text-align: center;
+}
+
+.kode-input::placeholder {
+    font-weight: 400;
+    color: var(--line-strong);
+}
