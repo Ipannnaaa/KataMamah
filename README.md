@@ -60,12 +60,17 @@ memberi galat 500.
 Sandinya semua `tuban12345`. Ganti sebelum dipasang di server yang bisa
 diakses umum.
 
-| Peran | Email |
-|---|---|
-| Super admin | `superadmin@tcm.test` |
-| Admin kantor | `admin@tcm.test` |
-| Petugas | `petugas1@tcm.test` (Dukcapil), `petugas4@tcm.test` (Puskesmas Bancar) |
-| Warga | `warga1@tcm.test` |
+| Peran | Email | Kantor |
+|---|---|---|
+| Super admin | `superadmin@tcm.test` | seluruh kabupaten |
+| Admin kantor | `admin@tcm.test` | Dispendukcapil |
+| Petugas | `petugas1@tcm.test` | Dispendukcapil |
+| Petugas | `petugas4@tcm.test` | Puskesmas Bancar |
+| Petugas | `petugas5@tcm.test` | SAMSAT Tuban |
+| Petugas | `petugas6@tcm.test` | UOBF Puskesmas Tuban |
+| Petugas | `petugas7@tcm.test` | Kecamatan Tuban |
+| Petugas | `petugas8@tcm.test` | Kelurahan Sendangharjo |
+| Warga | `warga1@tcm.test` | — |
 
 ## Progress saat ini
 

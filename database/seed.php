@@ -847,23 +847,47 @@ if ($dukcapil === null) {
     throw new RuntimeException('Tidak ada kantor berkategori dukcapil di config/fasilitas.php.');
 }
 /*
- * Satu petugas di luar Dukcapil.
+ * Petugas contoh di beberapa kantor, bukan hanya Dukcapil.
  *
  * Tanpa ini hanya satu dari 132 kantor yang punya petugas, dan antrean
- * yang dipesan di 131 kantor lainnya tidak pernah muncul di papan petugas
- * mana pun. Dari sisi warga antreannya terlihat tercatat, tetapi tidak ada
- * yang bisa menanganinya — gejala yang menyesatkan karena kodenya sendiri
- * bekerja normal.
+ * yang dipesan di kantor lain tercatat rapi tetapi tidak pernah muncul di
+ * papan petugas mana pun. Dari sisi warga pemesanan berhasil dan kodenya
+ * terbit, jadi gejalanya menyesatkan: terlihat seperti kerusakan kode,
+ * padahal yang kurang datanya.
  *
- * Dicari lewat slug dengan cadangan kategori: nama resmi kantor mengikuti
- * data OSM dan slug-nya bisa berubah, tetapi seed tidak boleh pecah
- * karenanya.
+ * Yang dipilih sengaja beragam jenis, bukan banyak kantor sejenis: satu
+ * samsat, satu puskesmas kota, satu kecamatan, satu kelurahan, ditambah
+ * satu puskesmas di luar Kecamatan Tuban. Yang terakhir itu berguna untuk
+ * memperlihatkan bahwa batas kantor benar-benar bekerja, karena petugasnya
+ * tidak bisa melihat antrean kantor lain.
  */
-$puskesmas = DB::column('SELECT id FROM locations WHERE slug = ? LIMIT 1', ['puskesmas-bancar'])
-    ?? DB::column('SELECT id FROM locations WHERE category = ? ORDER BY id LIMIT 1', ['puskesmas']);
 
-if ($puskesmas === null) {
-    throw new RuntimeException('Tidak ada kantor berkategori puskesmas di config/fasilitas.php.');
+/**
+ * Mencari kantor lewat slug, dengan cadangan kategori.
+ *
+ * Nama resmi kantor mengikuti data OpenStreetMap dan slug-nya ikut berubah
+ * bila namanya diperbaiki di sana. Seed tidak boleh pecah karena itu, jadi
+ * kalau slug tidak ketemu, kantor pertama berkategori sama dipakai.
+ */
+$kantorContoh = static function (string $slug, string $kategori): ?int {
+    return DB::column('SELECT id FROM locations WHERE slug = ? LIMIT 1', [$slug])
+        ?? DB::column('SELECT id FROM locations WHERE category = ? ORDER BY id LIMIT 1', [$kategori]);
+};
+
+$contoh = [];
+
+foreach ([
+    'puskesmas_bancar' => ['puskesmas-bancar', 'puskesmas'],
+    'samsat' => ['kantor-samsat-tuban', 'samsat'],
+    'puskesmas_tuban' => ['uobf-puskesmas-tuban', 'puskesmas'],
+    'kecamatan' => ['kantor-kecamatan-tuban-kabupaten-tuban', 'kecamatan'],
+    'kelurahan' => ['kantor-kelurahan-sendangharjo-tuban', 'kelurahan'],
+] as $kunci => [$slug, $kategori]) {
+    $contoh[$kunci] = $kantorContoh($slug, $kategori);
+
+    if ($contoh[$kunci] === null) {
+        throw new RuntimeException("Tidak ada kantor berkategori $kategori di config/fasilitas.php.");
+    }
 }
 
 $sandi = password_hash('tuban12345', PASSWORD_DEFAULT);
@@ -876,7 +900,11 @@ foreach ([
     ['officer', $dukcapil, 'Bayu Prasetya', 'petugas1@tcm.test', null],
     ['officer', $dukcapil, 'Ratih Kusuma', 'petugas2@tcm.test', null],
     ['officer', $dukcapil, 'Joko Santoso', 'petugas3@tcm.test', null],
-    ['officer', $puskesmas, 'Nur Aisyah', 'petugas4@tcm.test', null],
+    ['officer', $contoh['puskesmas_bancar'], 'Nur Aisyah', 'petugas4@tcm.test', null],
+    ['officer', $contoh['samsat'], 'Hendra Gunawan', 'petugas5@tcm.test', null],
+    ['officer', $contoh['puskesmas_tuban'], 'Lilis Suryani', 'petugas6@tcm.test', null],
+    ['officer', $contoh['kecamatan'], 'Agus Salim', 'petugas7@tcm.test', null],
+    ['officer', $contoh['kelurahan'], 'Fitri Handayani', 'petugas8@tcm.test', null],
     ['user', null, 'Rudi Maulana', 'warga1@tcm.test', '3523011203990002'],
     ['user', null, 'Dewi Larasati', 'warga2@tcm.test', '3523014506020003'],
     ['user', null, 'Agus Winarno', 'warga3@tcm.test', '3523012208850004'],
