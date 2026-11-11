@@ -235,12 +235,20 @@ CREATE TABLE `queue_documents` (
     `mime`           VARCHAR(100) NOT NULL,
     `size_bytes`     INT UNSIGNED NOT NULL,
     `verified`       TINYINT(1) NOT NULL DEFAULT 0,
+    -- 'syarat' diunggah warga saat memesan; 'hasil' diunggah petugas saat
+    -- menyelesaikan, misalnya foto KIA yang sudah jadi. Dibedakan dengan
+    -- kolom sendiri, bukan dari requirement_id yang kebetulan NULL:
+    -- berkas syarat pun bisa tidak terikat satu syarat tertentu.
+    `kind`           ENUM('syarat','hasil') NOT NULL DEFAULT 'syarat',
+    `uploaded_by`    INT UNSIGNED NULL,
     `uploaded_at`    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT `fk_documents_queue`
         FOREIGN KEY (`queue_id`) REFERENCES `queues` (`id`) ON DELETE CASCADE,
     CONSTRAINT `fk_documents_requirement`
         FOREIGN KEY (`requirement_id`) REFERENCES `service_requirements` (`id`) ON DELETE SET NULL,
-    INDEX `idx_documents_queue` (`queue_id`)
+    CONSTRAINT `fk_documents_uploader`
+        FOREIGN KEY (`uploaded_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    INDEX `idx_documents_queue` (`queue_id`, `kind`)
 ) ENGINE = InnoDB;
 
 CREATE TABLE `queue_status_logs` (

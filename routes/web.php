@@ -90,6 +90,7 @@ $router->get('/admin/rekap/export', 'AdminController@export', $admin);
 $router->get('/admin/aduan', 'AdminController@reports', $admin);
 $router->post('/admin/aduan/{id}/status', 'AdminController@updateReport', $admin);
 $router->get('/admin/petugas', 'AdminController@officers', $admin);
+$router->post('/admin/petugas', 'AdminController@createOfficer', $admin);
 
 // Aspirasi berlaku se-kabupaten, jadi hanya super admin. Admin kantor
 // tidak berwenang menjawab hal di luar kantornya.

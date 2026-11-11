@@ -64,6 +64,7 @@ diakses umum.
 |---|---|---|
 | Super admin | `superadmin@tcm.test` | seluruh kabupaten |
 | Admin kantor | `admin@tcm.test` | Dispendukcapil |
+| Admin kantor | `admin2@tcm.test` | SAMSAT Tuban, satu-satunya yang punya pembayaran |
 | Petugas | `petugas1@tcm.test` | Dispendukcapil |
 | Petugas | `petugas4@tcm.test` | Puskesmas Bancar |
 | Petugas | `petugas5@tcm.test` | SAMSAT Tuban |
@@ -80,7 +81,9 @@ pencarian, ambil antrean tanpa akun dengan unggah berkas, lacak antrean lewat
 kode, daftar dan masuk dengan verifikasi email, halaman akun, chat warga dan
 petugas, panel petugas, serta panel admin dan super admin dengan rekap dan
 penanganan aduan. Papan petugas dan panel admin bisa mencari pemesanan lewat
-kode, selalu dalam batas kantor masing-masing. Panel admin punya dashboard
+kode, selalu dalam batas kantor masing-masing. Admin bisa menambah akun
+petugas, dan petugas bisa melampirkan berkas hasil saat menyelesaikan
+permohonan, yang lalu bisa diunduh warga dari halaman antreannya. Panel admin punya dashboard
 dengan grafik tren harian dan
 komposisi status, digambar sebagai SVG di server lalu diberi tooltip oleh
 JavaScript. Ada juga kotak aspirasi di `/aspirasi` untuk masukan yang tidak

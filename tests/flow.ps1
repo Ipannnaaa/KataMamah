@@ -29,6 +29,10 @@ $pass = 0
 $fail = 0
 $proyek = Split-Path -Parent $PSScriptRoot
 
+# Dipakai oleh beberapa pemeriksaan yang memanggil PHP langsung, sebagian
+# jauh sebelum bagian rebutan antrean, jadi didefinisikan sejak awal.
+$bootstrap = ($proyek -replace '\\', '/') + '/bootstrap.php'
+
 # Aplikasi diarahkan ke penampung SMTP selama pengujian.
 #
 # Tanpa ini, hasil uji bergantung pada SMTP apa yang kebetulan disetel di
@@ -615,7 +619,12 @@ function Salinan([string]$src) {
 
 $sadmin = Login 'superadmin@tcm.test' 'tuban12345'
 $panelFoto = Invoke-WebRequest -Uri "$base/admin/landmark/2/deskripsi" -WebSession $sadmin.session -UseBasicParsing
-Check 'panel superadmin melihat seluruh kantor' ($panelFoto.Content -match '132 terdaftar')
+# Jumlahnya dibaca dari basis data, bukan ditulis tetap. Menambah satu
+# landmark lewat panel sudah cukup membuat angka tetap itu salah, dan
+# kegagalannya menyesatkan: yang diuji sebenarnya "super admin melihat
+# seluruh kantor", bukan "kantornya ada 132".
+$totalKantor = ((& $Php -r "require '$bootstrap'; echo (int) App\Core\DB::column('SELECT COUNT(*) FROM locations');") -join '').Trim()
+Check 'panel superadmin melihat seluruh kantor' ($panelFoto.Content -match "$totalKantor terdaftar") "($totalKantor kantor)"
 Check 'formulir foto tersedia' ($panelFoto.Content -match 'name="foto"')
 Check 'formulir foto multipart' ($panelFoto.Content -match 'enctype="multipart/form-data"')
 
@@ -975,8 +984,6 @@ Check 'kategori di luar daftar ditolak' ($tolakKategori.Content -match 'Periksa 
 # belakangan menimpa officer_id milik yang pertama tanpa pesan apa pun.
 # Skenarionya hanya bisa disusun di dalam PHP: yang diuji adalah jeda
 # antara membaca baris dan menulisnya, yang lewat HTTP tidak bisa diatur.
-$bootstrap = ($proyek -replace '\\', '/') + '/bootstrap.php'
-
 $skripRebutan = @"
 require '$bootstrap';
 use App\Core\DB;
@@ -1259,6 +1266,60 @@ if ($kodeLain -ne '') {
 $kodeKarangan = Invoke-WebRequest -Uri "$base/admin/antrean?cari=TCM-ZZZZZ" -WebSession $sadmin.session -UseBasicParsing
 Check 'kode karangan tidak menampilkan baris apa pun' `
     (([regex]::Matches($kodeKarangan.Content, '<th scope="row">')).Count -eq 0)
+
+"== 40. Tambah petugas, lampiran hasil, dan pembayaran =="
+
+# Admin kantor tidak boleh diberi pilihan lokasi. Kalau boleh, admin satu
+# kantor bisa menyisipkan petugas ke kantor lain lalu membaca seluruh
+# antreannya lewat akun itu.
+$halPetugas = Invoke-WebRequest -Uri "$base/admin/petugas" -WebSession $adminLokasi.session -UseBasicParsing
+Check 'form tambah petugas tersedia bagi admin' ($halPetugas.Content -match 'Tambah petugas')
+Check 'admin kantor tidak memilih lokasi' ($halPetugas.Content -notmatch 'name="location_id"')
+
+$halPetugasSuper = Invoke-WebRequest -Uri "$base/admin/petugas" -WebSession $sadmin.session -UseBasicParsing
+Check 'super admin memilih lokasi' ($halPetugasSuper.Content -match 'name="location_id"')
+
+$mailPetugas = 'uji.petugas.' + [guid]::NewGuid().ToString('N').Substring(0, 8) + '@contoh.test'
+$buatPetugas = Follow (Invoke-WebRequest -Uri "$base/admin/petugas" -Method Post -WebSession $adminLokasi.session -UseBasicParsing `
+    -Body @{ _token = (Token $halPetugas.Content); name = 'Petugas Uji Alur'; email = $mailPetugas
+             phone = '081200007777'; password = 'rahasia12345'; password_confirmation = 'rahasia12345' }) $adminLokasi.session
+Check 'admin bisa menambah petugas' ($buatPetugas.Content -match 'ditambahkan')
+
+$lokasiBaru = ((& $Php -r "require '$bootstrap'; echo (int) App\Core\DB::column('SELECT location_id FROM users WHERE email = ?', ['$mailPetugas']);") -join '').Trim()
+$lokasiAdmin = ((& $Php -r "require '$bootstrap'; echo (int) App\Core\DB::column('SELECT location_id FROM users WHERE email = ?', ['admin@tcm.test']);") -join '').Trim()
+Check 'petugas baru mendarat di kantor adminnya' ($lokasiBaru -eq $lokasiAdmin) "($lokasiBaru vs $lokasiAdmin)"
+
+$halPetugas2 = Invoke-WebRequest -Uri "$base/admin/petugas" -WebSession $adminLokasi.session -UseBasicParsing
+$dobel = Follow (Invoke-WebRequest -Uri "$base/admin/petugas" -Method Post -WebSession $adminLokasi.session -UseBasicParsing `
+    -Body @{ _token = (Token $halPetugas2.Content); name = 'Petugas Dobel'; email = $mailPetugas
+             phone = ''; password = 'rahasia12345'; password_confirmation = 'rahasia12345' }) $adminLokasi.session
+Check 'email petugas yang dobel ditolak' ($dobel.Content -match 'sudah dipakai')
+
+# Berkas hasil: diunggah petugas, terlihat warga sebagai kartu tersendiri.
+$adaHasil = ((& $Php -r "require '$bootstrap'; echo (int) App\Core\DB::column('SELECT COUNT(*) FROM queue_documents WHERE kind = ?', ['hasil']);") -join '').Trim()
+Check 'ada berkas hasil tercatat' ([int]$adaHasil -gt 0) "($adaHasil berkas)"
+
+$kodeHasil = ((& $Php -r "require '$bootstrap'; echo (string) App\Core\DB::column('SELECT q.code FROM queues q JOIN queue_documents d ON d.queue_id = q.id AND d.kind = ? JOIN users u ON u.id = q.user_id WHERE u.email = ? LIMIT 1', ['hasil', 'warga1@tcm.test']);") -join '').Trim()
+
+if ($kodeHasil -ne '') {
+    # Sesi sendiri: $wargaSesi milik warga3, yang alamatnya sudah diganti
+    # oleh bagian sebelumnya.
+    $pemilikHasil = Login 'warga1@tcm.test' 'tuban12345'
+    $halHasil = Invoke-WebRequest -Uri "$base/akun/antrean/$kodeHasil" -WebSession $pemilikHasil.session -UseBasicParsing
+    Check 'warga melihat kartu Hasil layanan' ($halHasil.Content -match 'Hasil layanan')
+    Check 'hasil dipisah dari berkas unggahan warga' ($halHasil.Content -match 'Berkas yang Anda unggah')
+}
+
+# Pembayaran hanya terbit di kantor yang layanannya bertarif. Dukcapil
+# seluruhnya gratis menurut peraturan, jadi panelnya memang kosong dan itu
+# bukan kerusakan.
+$bayarSuper = Invoke-WebRequest -Uri "$base/admin/pembayaran" -WebSession $sadmin.session -UseBasicParsing
+Check 'super admin melihat baris pembayaran' (([regex]::Matches($bayarSuper.Content, '<th scope="row">')).Count -gt 0)
+
+$null = & $Php -r @"
+require '$bootstrap';
+App\Core\DB::run('DELETE FROM users WHERE email LIKE ' . chr(39) . 'uji.petugas.%@contoh.test' . chr(39));
+"@
 
 ''
 '--------------------------------------'

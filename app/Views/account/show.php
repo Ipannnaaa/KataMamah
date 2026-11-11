@@ -61,13 +61,52 @@ $bisaBatal = in_array((string) $queue['status'], ['baru', 'ditinjau'], true);
                 </div>
             <?php endif; ?>
 
+            <?php
+            /* Berkas syarat dan berkas hasil dipisah. Keduanya ada di tabel
+               yang sama, tetapi artinya berlawanan: yang satu dikirim warga,
+               yang satu diberikan kantor. Mencampurnya membuat warga mencari
+               dokumen jadinya di antara unggahannya sendiri. */
+            $berkasSyarat = [];
+            $berkasHasil = [];
+
+            foreach ($documents as $d) {
+                if ((string) ($d['kind'] ?? 'syarat') === 'hasil') {
+                    $berkasHasil[] = $d;
+                } else {
+                    $berkasSyarat[] = $d;
+                }
+            }
+            ?>
+
+            <?php if ($berkasHasil !== []) : ?>
+                <div class="card card--hasil">
+                    <p class="label">Hasil layanan</p>
+                    <p class="card__text">
+                        Dokumen yang diberikan kantor setelah permohonan Anda selesai.
+                    </p>
+                    <ul class="file-list">
+                        <?php foreach ($berkasHasil as $document) : ?>
+                            <li>
+                                <a href="<?= e(url('/berkas/' . $document['id'])) ?>"><?= e((string) $document['original_name']) ?></a>
+                                <small>
+                                    diunggah petugas
+                                    <?php if (!empty($document['uploaded_at'])) : ?>
+                                        · <?= e(tanggal(substr((string) $document['uploaded_at'], 0, 10))) ?>
+                                    <?php endif; ?>
+                                </small>
+                            </li>
+                        <?php endforeach; ?>
+                    </ul>
+                </div>
+            <?php endif; ?>
+
             <div class="card">
-                <p class="label">Berkas terlampir</p>
-                <?php if ($documents === []) : ?>
+                <p class="label">Berkas yang Anda unggah</p>
+                <?php if ($berkasSyarat === []) : ?>
                     <p class="card__text">Tidak ada berkas yang diunggah untuk antrean ini.</p>
                 <?php else : ?>
                     <ul class="file-list">
-                        <?php foreach ($documents as $document) : ?>
+                        <?php foreach ($berkasSyarat as $document) : ?>
                             <li>
                                 <a href="<?= e(url('/berkas/' . $document['id'])) ?>"><?= e((string) $document['original_name']) ?></a>
                                 <small>

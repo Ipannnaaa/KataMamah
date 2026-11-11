@@ -148,6 +148,11 @@ final class AdminController extends Controller
             'title' => 'Petugas lokasi',
             'focus' => 'petugas',
             'location' => $this->scopeLocation($locationId),
+            // Hanya super admin yang perlu memilih kantor; admin kantor
+            // selalu menambah di kantornya sendiri.
+            'pilihanKantor' => $locationId === null
+                ? DB::all('SELECT id, name FROM locations WHERE is_active = 1 ORDER BY name')
+                : [],
             'counts' => Queue::countsByStatus($locationId, date('Y-m-d')),
             'summary' => RecapService::summary($locationId, 'hari'),
             'perHour' => [],
@@ -735,6 +740,77 @@ final class AdminController extends Controller
         return $this->success(
             'Aduan #' . $report['id'] . ' ditandai "' . FacilityReport::labelStatus($status) . '".',
             '/admin/aduan'
+        );
+    }
+
+    /**
+     * Menambah akun petugas.
+     *
+     * Lokasinya tidak pernah diambil dari input untuk admin kantor: kalau
+     * boleh, admin satu kantor bisa menyisipkan petugas ke kantor lain dan
+     * membaca seluruh antreannya lewat akun itu. Super admin memang memilih
+     * kantornya, tetapi pilihannya tetap diperiksa ada dan aktif.
+     *
+     * Akunnya langsung ditandai terverifikasi: alamatnya diisikan admin,
+     * bukan didaftarkan sendiri oleh pemiliknya, jadi tidak ada yang perlu
+     * dibuktikan lewat email.
+     */
+    public function createOfficer(Request $request): Response
+    {
+        $scope = $this->scope();
+
+        $validator = Validator::make($request->all(), [
+            'name' => 'required|max:120',
+            'email' => 'required|email|max:160',
+            'phone' => 'phone',
+            'password' => 'required|min:8|max:72',
+            'password_confirmation' => 'required|same:password',
+        ], [
+            'name' => 'Nama petugas',
+            'email' => 'Email',
+            'phone' => 'Nomor ponsel',
+            'password' => 'Sandi',
+            'password_confirmation' => 'Ulangi sandi',
+        ]);
+
+        $errors = $validator->errors();
+        $email = $request->str('email');
+
+        if ($email !== '' && User::emailExists($email)) {
+            $errors['email'] = 'Email itu sudah dipakai akun lain.';
+        }
+
+        $lokasi = $scope;
+
+        if ($scope === null) {
+            $pilihan = $request->int('location_id');
+            $ada = $pilihan > 0
+                ? DB::column('SELECT id FROM locations WHERE id = ? AND is_active = 1', [$pilihan])
+                : null;
+
+            if ($ada === null) {
+                $errors['location_id'] = 'Pilih kantor yang aktif.';
+            }
+
+            $lokasi = (int) $ada;
+        }
+
+        if ($errors !== []) {
+            return $this->backWithErrors('/admin/petugas', $errors, $request->all());
+        }
+
+        User::create([
+            'role' => 'officer',
+            'location_id' => $lokasi,
+            'name' => $request->str('name'),
+            'email' => $email,
+            'phone' => $request->str('phone') !== '' ? $request->str('phone') : null,
+            'is_verified' => 1,
+        ], $request->str('password'));
+
+        return $this->success(
+            'Petugas ' . $request->str('name') . ' ditambahkan.',
+            '/admin/petugas'
         );
     }
 

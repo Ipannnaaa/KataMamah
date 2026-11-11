@@ -100,15 +100,38 @@ $tabs = [
                             <button class="btn btn--primary btn--block" type="submit">Terima antrean</button>
                         </form>
                     <?php elseif ($tab === 'saya') : ?>
-                        <form method="post" action="<?= e(url('/petugas/antrean/' . $queue['code'] . '/status')) ?>" class="row-form">
+                        <?php
+                        $lanjutan = (array) config('roles.transitions.' . $queue['status'], []);
+                        $bisaSelesai = in_array('selesai', $lanjutan, true);
+                        ?>
+                        <form method="post" action="<?= e(url('/petugas/antrean/' . $queue['code'] . '/status')) ?>"
+                              class="stack-form" enctype="multipart/form-data">
                             <?= csrf_field() ?>
-                            <label class="sr-only" for="status-<?= e((string) $queue['id']) ?>">Status baru</label>
-                            <select id="status-<?= e((string) $queue['id']) ?>" name="status">
-                                <?php foreach ((array) config('roles.transitions.' . $queue['status'], []) as $target) : ?>
-                                    <option value="<?= e((string) $target) ?>">Ubah ke: <?= e(status_label((string) $target)) ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                            <button class="btn btn--dark" type="submit">Simpan</button>
+
+                            <label class="field">
+                                <span class="field__label">Ubah status</span>
+                                <select name="status">
+                                    <?php foreach ($lanjutan as $target) : ?>
+                                        <option value="<?= e((string) $target) ?>"><?= e(status_label((string) $target)) ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </label>
+
+                            <?php if ($bisaSelesai) : ?>
+                                <?php /* Hanya muncul kalau 'selesai' memang salah satu lanjutannya:
+                                         melampirkan hasil tidak masuk akal saat antrean baru diterima. */ ?>
+                                <label class="field">
+                                    <span class="field__label">Lampirkan hasil (opsional)</span>
+                                    <input type="file" name="hasil" accept="image/jpeg,image/png,image/webp,application/pdf">
+                                    <span class="side-note">
+                                        Foto atau pindaian dokumen yang sudah jadi, misalnya KIA atau
+                                        surat keterangan. Warga bisa mengunduhnya dari halaman antreannya.
+                                        Hanya terpakai bila statusnya diubah ke Selesai.
+                                    </span>
+                                </label>
+                            <?php endif; ?>
+
+                            <button class="btn btn--dark" type="submit">Simpan status</button>
                         </form>
 
                         <form method="post" action="<?= e(url('/petugas/antrean/' . $queue['code'] . '/catatan')) ?>" class="stack-form">

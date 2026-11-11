@@ -7,6 +7,7 @@ namespace App\Controllers;
 use App\Core\Auth;
 use App\Core\CodeGenerator;
 use App\Core\Controller;
+use App\Core\DB;
 use App\Core\Request;
 use App\Core\Response;
 use App\Models\Location;
@@ -14,6 +15,8 @@ use App\Models\Queue;
 use App\Services\ChatService;
 use App\Services\QueueService;
 use App\Services\RecapService;
+use App\Services\UploadService;
+use RuntimeException;
 use Throwable;
 
 final class OfficerController extends Controller
@@ -117,15 +120,81 @@ final class OfficerController extends Controller
             return $this->failure('Status tujuan tidak dikenal.', '/petugas?tab=saya');
         }
 
+        /*
+         * Berkas hasil diterima lebih dulu, sebelum status berubah.
+         *
+         * Urutannya disengaja: kalau statusnya diubah duluan lalu unggahan
+         * gagal, antreannya sudah tercatat selesai tanpa hasil dan petugas
+         * tidak bisa mengulang, karena transisi 'selesai' tidak punya
+         * lanjutan.
+         */
+        $hasil = null;
+
+        if ($to === 'selesai') {
+            try {
+                $hasil = $this->simpanHasil();
+            } catch (RuntimeException $e) {
+                return $this->failure($e->getMessage(), '/petugas?tab=saya');
+            }
+        }
+
         try {
             QueueService::changeStatus($queue, $to, (int) Auth::id(), 'officer', $request->str('catatan') ?: null);
         } catch (Throwable $e) {
+            if ($hasil !== null) {
+                UploadService::discard([$hasil]);
+            }
+
             return $this->failure($e->getMessage(), '/petugas?tab=saya');
         }
 
+        if ($hasil !== null) {
+            DB::insert('queue_documents', [
+                'queue_id' => (int) $queue['id'],
+                'requirement_id' => null,
+                'file_path' => $hasil['path'],
+                'original_name' => $hasil['original_name'],
+                'mime' => $hasil['mime'],
+                'size_bytes' => $hasil['size'],
+                'verified' => 1,
+                'kind' => 'hasil',
+                'uploaded_by' => (int) Auth::id(),
+            ]);
+        }
+
         return $this->success(
-            'Status ' . $queue['code'] . ' menjadi "' . config('roles.status.' . $to) . '".',
+            'Status ' . $queue['code'] . ' menjadi "' . config('roles.status.' . $to) . '".'
+            . ($hasil !== null ? ' Berkas hasil ikut dilampirkan.' : ''),
             '/petugas?tab=saya'
+        );
+    }
+
+    /**
+     * Menyimpan berkas hasil yang dilampirkan petugas, bila ada.
+     *
+     * Mengembalikan null bila tidak ada lampiran: melampirkan hasil memang
+     * tidak wajib, karena tidak semua layanan menghasilkan dokumen yang
+     * bisa difoto.
+     *
+     * @return array{requirement_id: int|null, path: string, original_name: string, mime: string, size: int}|null
+     */
+    private function simpanHasil(): ?array
+    {
+        $berkas = $_FILES['hasil'] ?? null;
+
+        if (!is_array($berkas) || (int) ($berkas['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) {
+            return null;
+        }
+
+        if ((int) $berkas['error'] !== UPLOAD_ERR_OK) {
+            throw new RuntimeException('Berkas hasil gagal diunggah. Coba lagi.');
+        }
+
+        return UploadService::store(
+            (string) $berkas['tmp_name'],
+            (string) $berkas['name'],
+            (int) $berkas['size'],
+            null
         );
     }
 

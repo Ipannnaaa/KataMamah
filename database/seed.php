@@ -874,7 +874,7 @@ $kantorContoh = static function (string $slug, string $kategori): ?int {
         ?? DB::column('SELECT id FROM locations WHERE category = ? ORDER BY id LIMIT 1', [$kategori]);
 };
 
-$contoh = [];
+$kantorPilihan = [];
 
 foreach ([
     'puskesmas_bancar' => ['puskesmas-bancar', 'puskesmas'],
@@ -883,9 +883,9 @@ foreach ([
     'kecamatan' => ['kantor-kecamatan-tuban-kabupaten-tuban', 'kecamatan'],
     'kelurahan' => ['kantor-kelurahan-sendangharjo-tuban', 'kelurahan'],
 ] as $kunci => [$slug, $kategori]) {
-    $contoh[$kunci] = $kantorContoh($slug, $kategori);
+    $kantorPilihan[$kunci] = $kantorContoh($slug, $kategori);
 
-    if ($contoh[$kunci] === null) {
+    if ($kantorPilihan[$kunci] === null) {
         throw new RuntimeException("Tidak ada kantor berkategori $kategori di config/fasilitas.php.");
     }
 }
@@ -897,14 +897,18 @@ $userIds = [];
 foreach ([
     ['superadmin', null, 'Dwi Hartanto', 'superadmin@tcm.test', null],
     ['admin', $dukcapil, 'Sulastri Handayani', 'admin@tcm.test', null],
+    // Admin di kantor bertarif. Seluruh layanan Dukcapil gratis menurut
+    // peraturan, jadi panel pembayaran di sana memang selalu kosong, dan
+    // tarifnya tidak boleh dikarang hanya supaya panel itu ada isinya.
+    ['admin', $kantorPilihan['samsat'], 'Rizal Fahmi', 'admin2@tcm.test', null],
     ['officer', $dukcapil, 'Bayu Prasetya', 'petugas1@tcm.test', null],
     ['officer', $dukcapil, 'Ratih Kusuma', 'petugas2@tcm.test', null],
     ['officer', $dukcapil, 'Joko Santoso', 'petugas3@tcm.test', null],
-    ['officer', $contoh['puskesmas_bancar'], 'Nur Aisyah', 'petugas4@tcm.test', null],
-    ['officer', $contoh['samsat'], 'Hendra Gunawan', 'petugas5@tcm.test', null],
-    ['officer', $contoh['puskesmas_tuban'], 'Lilis Suryani', 'petugas6@tcm.test', null],
-    ['officer', $contoh['kecamatan'], 'Agus Salim', 'petugas7@tcm.test', null],
-    ['officer', $contoh['kelurahan'], 'Fitri Handayani', 'petugas8@tcm.test', null],
+    ['officer', $kantorPilihan['puskesmas_bancar'], 'Nur Aisyah', 'petugas4@tcm.test', null],
+    ['officer', $kantorPilihan['samsat'], 'Hendra Gunawan', 'petugas5@tcm.test', null],
+    ['officer', $kantorPilihan['puskesmas_tuban'], 'Lilis Suryani', 'petugas6@tcm.test', null],
+    ['officer', $kantorPilihan['kecamatan'], 'Agus Salim', 'petugas7@tcm.test', null],
+    ['officer', $kantorPilihan['kelurahan'], 'Fitri Handayani', 'petugas8@tcm.test', null],
     ['user', null, 'Rudi Maulana', 'warga1@tcm.test', '3523011203990002'],
     ['user', null, 'Dewi Larasati', 'warga2@tcm.test', '3523014506020003'],
     ['user', null, 'Agus Winarno', 'warga3@tcm.test', '3523012208850004'],
@@ -1049,6 +1053,181 @@ if ($contoh !== null && $contoh['officer_id'] !== null) {
         'created_at' => date('Y-m-d H:i:s'),
     ]);
 }
+
+/* ========================================== antrean bertarif & hasilnya */
+
+/*
+ * Sampai di sini seluruh antrean contoh ada di Dukcapil, dan semua
+ * layanannya gratis. Akibatnya tabel pembayaran selalu kosong dan panel
+ * "Informasi pembayaran" tidak pernah punya isi untuk diperlihatkan.
+ *
+ * Blok ini menambah antrean di SAMSAT, yang layanannya memang bertarif,
+ * sekaligus melampirkan berkas hasil pada sebagian yang sudah selesai.
+ */
+
+echo "Membuat antrean bertarif dan berkas hasil…\n";
+
+/**
+ * Menggambar berkas hasil contoh.
+ *
+ * Sengaja diberi cap "CONTOH" besar-besar dan tidak meniru tata letak
+ * dokumen resmi mana pun: berkas ini ikut terunduh dari halaman warga,
+ * dan gambar yang menyerupai dokumen asli bisa dipakai orang lain untuk
+ * menipu.
+ */
+$uploadDir = rtrim((string) config('app.upload.path', BASE_PATH . '/storage/uploads'), '/');
+
+$gambarHasil = static function (string $judul, string $kode) use ($uploadDir): ?array {
+    if (!function_exists('imagecreatetruecolor')) {
+        return null;
+    }
+
+    $img = imagecreatetruecolor(640, 400);
+    $putih = imagecolorallocate($img, 255, 255, 255);
+    $hijau = imagecolorallocate($img, 14, 107, 92);
+    $tinta = imagecolorallocate($img, 21, 32, 28);
+    $redup = imagecolorallocate($img, 140, 150, 145);
+
+    imagefilledrectangle($img, 0, 0, 640, 400, $putih);
+    imagefilledrectangle($img, 0, 0, 640, 64, $hijau);
+    imagestring($img, 5, 24, 24, 'TUBAN CIVIC MAP', $putih);
+
+    imagestring($img, 5, 24, 110, substr($judul, 0, 60), $tinta);
+    imagestring($img, 4, 24, 150, 'Kode permohonan: ' . $kode, $tinta);
+    imagestring($img, 3, 24, 180, 'Dokumen ini dihasilkan oleh seeder', $redup);
+    imagestring($img, 3, 24, 200, 'sebagai contoh tampilan, bukan dokumen asli.', $redup);
+
+    imagestring($img, 5, 24, 300, 'C O N T O H', $redup);
+    imagestring($img, 3, 24, 330, 'BUKAN DOKUMEN RESMI', $redup);
+    imagerectangle($img, 12, 12, 627, 387, $redup);
+
+    $relatif = date('Y/m') . '/' . bin2hex(random_bytes(16)) . '.png';
+    $tujuan = $uploadDir . '/' . $relatif;
+
+    if (!is_dir(dirname($tujuan)) && !mkdir(dirname($tujuan), 0775, true) && !is_dir(dirname($tujuan))) {
+        imagedestroy($img);
+
+        return null;
+    }
+
+    imagepng($img, $tujuan);
+    imagedestroy($img);
+
+    return ['path' => $relatif, 'size' => (int) filesize($tujuan)];
+};
+
+// Lampirkan hasil pada sebagian antrean Dukcapil yang sudah selesai.
+$selesaiDukcapil = DB::all(
+    "SELECT q.id, q.code, s.name AS layanan
+       FROM queues q JOIN services s ON s.id = q.service_id
+      WHERE q.location_id = ? AND q.status = 'selesai'
+   ORDER BY q.id DESC LIMIT 6",
+    [$dukcapil]
+);
+
+$jumlahHasil = 0;
+
+foreach ($selesaiDukcapil as $q) {
+    $berkas = $gambarHasil((string) $q['layanan'], (string) $q['code']);
+
+    if ($berkas === null) {
+        break;
+    }
+
+    DB::insert('queue_documents', [
+        'queue_id' => (int) $q['id'],
+        'requirement_id' => null,
+        'file_path' => $berkas['path'],
+        'original_name' => 'hasil-' . strtolower((string) $q['code']) . '.png',
+        'mime' => 'image/png',
+        'size_bytes' => $berkas['size'],
+        'verified' => 1,
+        'kind' => 'hasil',
+        'uploaded_by' => $userIds['petugas1@tcm.test'],
+    ]);
+
+    $jumlahHasil++;
+}
+
+// Antrean di SAMSAT, yang layanannya bertarif, supaya pembayaran terisi.
+$layananSamsat = DB::all(
+    'SELECT id, fee FROM services WHERE location_id = ? AND fee > 0',
+    [$kantorPilihan['samsat']]
+);
+
+$wargaIds = [
+    $userIds['warga1@tcm.test'],
+    $userIds['warga2@tcm.test'],
+    $userIds['warga3@tcm.test'],
+];
+
+$jumlahBayar = 0;
+
+if ($layananSamsat !== []) {
+    for ($h = 9; $h >= 0; $h--) {
+        $tanggal = date('Y-m-d', strtotime("-$h days"));
+
+        if ((int) date('N', strtotime($tanggal)) >= 6) {
+            continue;
+        }
+
+        foreach (range(1, random_int(1, 3)) as $ignored) {
+            $layanan = $layananSamsat[array_rand($layananSamsat)];
+            $biaya = (float) $layanan['fee'];
+
+            // Sebagian sengaja ditinggalkan menunggu bayar: panel pembayaran
+            // baru ada gunanya kalau ada yang perlu diverifikasi admin.
+            $status = $h === 0 ? 'ditangani' : (random_int(1, 10) <= 7 ? 'selesai' : 'ditinjau');
+            $lunas = $status === 'selesai' && random_int(1, 10) <= 8;
+
+            $dibuat = $tanggal . ' ' . sprintf('%02d:%02d:00', random_int(8, 13), random_int(0, 59));
+            $diterima = date('Y-m-d H:i:s', strtotime($dibuat) + random_int(5, 30) * 60);
+            $selesai = date('Y-m-d H:i:s', strtotime($diterima) + random_int(15, 60) * 60);
+
+            $nomor = 1 + (int) DB::column(
+                'SELECT COALESCE(MAX(queue_number), 0) FROM queues WHERE location_id = ? AND queue_date = ?',
+                [$kantorPilihan['samsat'], $tanggal]
+            );
+
+            $queueId = DB::insert('queues', [
+                'code' => CodeGenerator::uniqueQueueCode(),
+                'location_id' => $kantorPilihan['samsat'],
+                'service_id' => (int) $layanan['id'],
+                'user_id' => $wargaIds[array_rand($wargaIds)],
+                'officer_id' => $userIds['petugas5@tcm.test'],
+                'queue_date' => $tanggal,
+                'queue_number' => $nomor,
+                'slot_time' => $slot[array_rand($slot)],
+                'status' => $status,
+                'payment_status' => $lunas ? 'lunas' : 'menunggu',
+                'accepted_at' => $diterima,
+                'finished_at' => $status === 'selesai' ? $selesai : null,
+                'created_at' => $dibuat,
+            ]);
+
+            DB::insert('queue_status_logs', [
+                'queue_id' => $queueId, 'from_status' => null, 'to_status' => 'baru',
+                'actor_id' => null, 'note' => 'Permohonan dibuat oleh warga', 'created_at' => $dibuat,
+            ]);
+
+            DB::insert('payments', [
+                'queue_id' => $queueId,
+                'amount' => $biaya,
+                'method' => ['tunai', 'transfer', 'qris'][array_rand([0, 1, 2])],
+                'reference' => $lunas ? 'REF' . strtoupper(bin2hex(random_bytes(4))) : null,
+                'status' => $lunas ? 'lunas' : 'menunggu',
+                'paid_at' => $lunas ? $selesai : null,
+                'verified_by' => $lunas ? $userIds['admin@tcm.test'] : null,
+                'created_at' => $dibuat,
+            ]);
+
+            $jumlahAntrean++;
+            $jumlahBayar++;
+        }
+    }
+}
+
+printf("  %d berkas hasil, %d antrean bertarif\n", $jumlahHasil, $jumlahBayar);
 
 /* ================================================================ ringkasan */
 

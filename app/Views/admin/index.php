@@ -22,6 +22,7 @@
 $byOfficer = $byOfficer ?? [];
 $tren = $tren ?? [];
 $cari = $cari ?? '';
+$pilihanKantor = $pilihanKantor ?? [];
 $kode = $kode ?? null;
 $hourMax = 1;
 
@@ -360,6 +361,84 @@ foreach ($byOfficer as $row) {
                     <?php endforeach; ?>
                 </tbody>
             </table>
+        <?php endif; ?>
+    
+        <?php if ($focus === 'petugas') : ?>
+            <h3 class="label">Tambah petugas</h3>
+            <p class="card__text">
+                Akunnya langsung aktif dan tidak perlu verifikasi email, karena
+                alamatnya Anda yang isikan, bukan didaftarkan sendiri oleh
+                pemiliknya. Beri tahu petugasnya sandi yang Anda buat, dan minta
+                ia menggantinya setelah masuk pertama kali.
+            </p>
+
+            <form method="post" action="<?= e(url('/admin/petugas')) ?>" class="form">
+                <?= csrf_field() ?>
+
+                <?php if ($pilihanKantor !== []) : ?>
+                    <label class="field">
+                        <span class="field__label">Kantor</span>
+                        <select name="location_id" required>
+                            <option value="">— pilih kantor —</option>
+                            <?php foreach ($pilihanKantor as $k) : ?>
+                                <option value="<?= e((string) $k['id']) ?>"
+                                    <?= old('location_id') === (string) $k['id'] ? ' selected' : '' ?>>
+                                    <?= e((string) $k['name']) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                        <?php if (errors('location_id')) : ?>
+                            <span class="field-error"><?= e((string) errors('location_id')) ?></span>
+                        <?php endif; ?>
+                    </label>
+                <?php else : ?>
+                    <p class="side-note">
+                        Petugas ditambahkan di <strong><?= e((string) ($location['name'] ?? '-')) ?></strong>.
+                    </p>
+                <?php endif; ?>
+
+                <label class="field">
+                    <span class="field__label">Nama petugas</span>
+                    <input type="text" name="name" value="<?= e(old('name')) ?>" maxlength="120" required>
+                    <?php if (errors('name')) : ?>
+                        <span class="field-error"><?= e((string) errors('name')) ?></span>
+                    <?php endif; ?>
+                </label>
+
+                <label class="field">
+                    <span class="field__label">Email</span>
+                    <input type="email" name="email" value="<?= e(old('email')) ?>" maxlength="160" required>
+                    <?php if (errors('email')) : ?>
+                        <span class="field-error"><?= e((string) errors('email')) ?></span>
+                    <?php endif; ?>
+                </label>
+
+                <label class="field">
+                    <span class="field__label">Nomor ponsel (boleh dikosongkan)</span>
+                    <input type="text" name="phone" value="<?= e(old('phone')) ?>" maxlength="30">
+                    <?php if (errors('phone')) : ?>
+                        <span class="field-error"><?= e((string) errors('phone')) ?></span>
+                    <?php endif; ?>
+                </label>
+
+                <label class="field">
+                    <span class="field__label">Sandi awal (minimal 8 huruf)</span>
+                    <input type="password" name="password" minlength="8" maxlength="72" required>
+                    <?php if (errors('password')) : ?>
+                        <span class="field-error"><?= e((string) errors('password')) ?></span>
+                    <?php endif; ?>
+                </label>
+
+                <label class="field">
+                    <span class="field__label">Ulangi sandi</span>
+                    <input type="password" name="password_confirmation" minlength="8" maxlength="72" required>
+                    <?php if (errors('password_confirmation')) : ?>
+                        <span class="field-error"><?= e((string) errors('password_confirmation')) ?></span>
+                    <?php endif; ?>
+                </label>
+
+                <button class="btn btn--primary" type="submit">Tambah petugas</button>
+            </form>
         <?php endif; ?>
     </section>
 <?php endif; ?>
