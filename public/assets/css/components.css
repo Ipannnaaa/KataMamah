@@ -2151,3 +2151,29 @@ input[type='file']:disabled {
     font-weight: 400;
     color: var(--line-strong);
 }
+
+/* Pencarian kode pemesanan di papan petugas dan panel admin. */
+.cari-kode {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 10px;
+    margin: 0 0 16px;
+}
+
+.cari-kode .field {
+    flex: 1 1 240px;
+    margin: 0;
+}
+
+.cari-kode input {
+    font-family: Consolas, Menlo, 'Courier New', monospace;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+}
+
+/* Baris keterangan yang lebih ringan di dalam sel tabel, misalnya nama
+   kantor pada daftar antrean super admin. */
+.muted {
+    color: var(--ink-muted);
+}

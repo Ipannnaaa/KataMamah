@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\Core\Auth;
+use App\Core\CodeGenerator;
 use App\Core\Controller;
 use App\Core\DB;
 use App\Core\Request;
@@ -59,6 +60,11 @@ final class AdminController extends Controller
             $filter = '';
         }
 
+        // Lihat catatan di OfficerController: bentuk kode yang diketik orang
+        // tidak pernah seragam, jadi dinormalkan dulu.
+        $cari = trim($request->str('cari'));
+        $kode = $cari !== '' ? CodeGenerator::normalize($cari) : null;
+
         // Halaman antrean memakai view yang sama dengan fokus berbeda.
         return $this->view('admin/index', [
             'title' => 'Informasi antrean',
@@ -68,7 +74,9 @@ final class AdminController extends Controller
             'summary' => RecapService::summary($locationId, 'hari'),
             'perHour' => RecapService::perHour($locationId),
             'perDay' => [],
-            'queues' => Queue::forLocation($locationId, $filter !== '' ? $filter : null, $request->str('tanggal') ?: null, 200),
+            'queues' => Queue::forLocation($locationId, $filter !== '' ? $filter : null, $request->str('tanggal') ?: null, 200, $kode),
+            'cari' => $cari,
+            'kode' => $kode,
             'payments' => [],
             'paymentTotals' => Payment::totalsToday($locationId),
             'officers' => User::officersAt($locationId),

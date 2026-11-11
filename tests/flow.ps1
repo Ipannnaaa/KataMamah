@@ -29,6 +29,35 @@ $pass = 0
 $fail = 0
 $proyek = Split-Path -Parent $PSScriptRoot
 
+# Aplikasi diarahkan ke penampung SMTP selama pengujian.
+#
+# Tanpa ini, hasil uji bergantung pada SMTP apa yang kebetulan disetel di
+# .env mesin yang menjalankannya: begitu diarahkan ke server sungguhan,
+# seluruh pemeriksaan email gagal walau tidak ada yang rusak. Berkas .env
+# disalin dulu dan dikembalikan apa adanya di akhir, termasuk bila skrip
+# ini dihentikan di tengah jalan.
+$envBerkas = Join-Path $proyek '.env'
+$envCadangan = Join-Path $env:TEMP ('flow-env-' + [guid]::NewGuid().ToString('N') + '.bak')
+
+if (Test-Path -LiteralPath $envBerkas) {
+    Copy-Item -LiteralPath $envBerkas -Destination $envCadangan -Force
+    $isiEnv = Get-Content -LiteralPath $envBerkas -Raw
+    $isiEnv = $isiEnv -replace '(?m)^MAIL_HOST=.*$',       'MAIL_HOST=127.0.0.1'
+    $isiEnv = $isiEnv -replace '(?m)^MAIL_PORT=.*$',       "MAIL_PORT=$SinkPort"
+    $isiEnv = $isiEnv -replace '(?m)^MAIL_ENCRYPTION=.*$', 'MAIL_ENCRYPTION=none'
+    $isiEnv = $isiEnv -replace '(?m)^MAIL_AUTH=.*$',       'MAIL_AUTH=false'
+    $isiEnv = $isiEnv -replace '(?m)^MAIL_USERNAME=.*$',   'MAIL_USERNAME='
+    $isiEnv = $isiEnv -replace '(?m)^MAIL_PASSWORD=.*$',   'MAIL_PASSWORD='
+    Set-Content -LiteralPath $envBerkas -Value $isiEnv -NoNewline
+}
+
+function KembalikanEnv() {
+    if ($script:envCadangan -and (Test-Path -LiteralPath $script:envCadangan)) {
+        Copy-Item -LiteralPath $script:envCadangan -Destination $script:envBerkas -Force
+        Remove-Item -LiteralPath $script:envCadangan -Force -ErrorAction SilentlyContinue
+    }
+}
+
 # Penampung SMTP dinyalakan lebih dulu: pendaftaran akun di bagian 20 sudah
 # mengirim email, jadi sink harus sudah mendengarkan sebelum itu.
 $sink = Start-Process -FilePath $Php `
@@ -45,6 +74,8 @@ function MatikanSink() {
     if ($script:sink -and -not $script:sink.HasExited) {
         Stop-Process -Id $script:sink.Id -Force -ErrorAction SilentlyContinue
     }
+
+    KembalikanEnv
 }
 
 trap { MatikanSink; break }
@@ -1184,6 +1215,50 @@ $null = & $Php -r @"
 require '$bootstrap';
 App\Core\DB::run("DELETE FROM aspirations WHERE message LIKE 'Uji alur:%'");
 "@
+
+"== 39. Pencarian kode pemesanan =="
+
+# Kode antrean dibagikan lewat pesan dan mudah berpindah tangan, jadi yang
+# diuji di sini bukan "ketemu" melainkan batas kantornya: pencarian tidak
+# boleh menjadi jalan melihat antrean kantor lain.
+$cariSendiri = Invoke-WebRequest -Uri "$base/petugas?cari=$kode" -WebSession $petugas.session -UseBasicParsing
+Check 'petugas menemukan kode kantornya' ($cariSendiri.Content -match [regex]::Escape($kode))
+
+$tanpaAwalan = $kode -replace '^[A-Z]+-', ''
+$cariLonggar = Invoke-WebRequest -Uri "$base/petugas?cari=$tanpaAwalan" -WebSession $petugas.session -UseBasicParsing
+Check 'kode tanpa awalan tetap ketemu' ($cariLonggar.Content -match [regex]::Escape($kode))
+
+# Satu kode milik kantor lain, diambil dari basis data supaya tidak
+# bergantung pada data contoh tertentu.
+$kodeLain = ((& $Php -r @"
+require '$bootstrap';
+echo (string) App\Core\DB::column(
+    "SELECT q.code FROM queues q
+      WHERE q.location_id <> (SELECT location_id FROM users WHERE email = 'petugas1@tcm.test')
+      ORDER BY q.id DESC LIMIT 1"
+);
+"@) -join '').Trim()
+
+Check 'ada antrean di kantor lain untuk diuji' ($kodeLain -ne '') "($kodeLain)"
+
+if ($kodeLain -ne '') {
+    $bocorPetugas = Invoke-WebRequest -Uri "$base/petugas?cari=$kodeLain" -WebSession $petugas.session -UseBasicParsing
+    Check 'petugas tidak menemukan kode kantor lain' `
+        ($bocorPetugas.Content -match 'Tidak ada antrean berkode')
+
+    $bocorAdmin = Invoke-WebRequest -Uri "$base/admin/antrean?cari=$kodeLain" -WebSession $adminLokasi.session -UseBasicParsing
+    Check 'admin kantor tidak menemukan kode kantor lain' `
+        (([regex]::Matches($bocorAdmin.Content, '<th scope="row">')).Count -eq 0)
+
+    $temuSuper = Invoke-WebRequest -Uri "$base/admin/antrean?cari=$kodeLain" -WebSession $sadmin.session -UseBasicParsing
+    Check 'super admin menemukan kode kantor mana pun' ($temuSuper.Content -match [regex]::Escape($kodeLain))
+    Check 'hasil super admin menyebut nama kantornya' `
+        ($temuSuper.Content -match 'class="muted"')
+}
+
+$kodeKarangan = Invoke-WebRequest -Uri "$base/admin/antrean?cari=TCM-ZZZZZ" -WebSession $sadmin.session -UseBasicParsing
+Check 'kode karangan tidak menampilkan baris apa pun' `
+    (([regex]::Matches($kodeKarangan.Content, '<th scope="row">')).Count -eq 0)
 
 ''
 '--------------------------------------'

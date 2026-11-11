@@ -10,8 +10,12 @@
  * @var array<string, mixed> $summary
  * @var array<int, array{label: string, total: int}> $byService
  * @var string $period
+ * @var string $cari
+ * @var string|null $kode
  */
 
+$cari = $cari ?? '';
+$kode = $kode ?? null;
 $max = 0;
 
 foreach ($byService as $row) {
@@ -33,16 +37,42 @@ $tabs = [
 </div>
 
 <?php if ($focus !== 'rekap') : ?>
-    <nav class="tabs" aria-label="Tab papan antrean">
-        <?php foreach ($tabs as $key => $label) : ?>
-            <a class="tab<?= $tab === $key ? ' is-active' : '' ?>" href="<?= e(url('/petugas?tab=' . $key)) ?>">
-                <?= e($label) ?> <span class="tab__count"><?= e((string) ($counts[$key] ?? 0)) ?></span>
-            </a>
-        <?php endforeach; ?>
-    </nav>
+    <form class="cari-kode" method="get" action="<?= e(url('/petugas')) ?>" role="search">
+        <label class="field field--inline">
+            <span class="field__label">Cari kode pemesanan</span>
+            <input type="search" name="cari" value="<?= e($cari) ?>"
+                   placeholder="TCM-XXXXX" autocomplete="off" spellcheck="false">
+        </label>
+        <button class="btn btn--primary" type="submit">Cari</button>
+        <?php if ($cari !== '') : ?>
+            <a class="btn btn--ghost" href="<?= e(url('/petugas')) ?>">Bersihkan</a>
+        <?php endif; ?>
+    </form>
+
+    <?php if ($cari !== '') : ?>
+        <p class="lede">
+            Hasil pencarian <strong><?= e((string) $kode) ?></strong> di kantor Anda,
+            tanpa memandang status.
+        </p>
+    <?php else : ?>
+        <nav class="tabs" aria-label="Tab papan antrean">
+            <?php foreach ($tabs as $key => $label) : ?>
+                <a class="tab<?= $tab === $key ? ' is-active' : '' ?>" href="<?= e(url('/petugas?tab=' . $key)) ?>">
+                    <?= e($label) ?> <span class="tab__count"><?= e((string) ($counts[$key] ?? 0)) ?></span>
+                </a>
+            <?php endforeach; ?>
+        </nav>
+    <?php endif; ?>
 
     <?php if ($cards === []) : ?>
-        <p class="empty">Tidak ada antrean pada tab ini.</p>
+        <?php if ($cari !== '') : ?>
+            <p class="empty">
+                Tidak ada antrean berkode <?= e((string) $kode) ?> di kantor Anda.
+                Kode yang benar tetapi milik kantor lain tidak akan muncul di sini.
+            </p>
+        <?php else : ?>
+            <p class="empty">Tidak ada antrean pada tab ini.</p>
+        <?php endif; ?>
     <?php else : ?>
         <div class="card-grid">
             <?php foreach ($cards as $queue) : ?>

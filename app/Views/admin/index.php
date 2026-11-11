@@ -21,6 +21,8 @@
 
 $byOfficer = $byOfficer ?? [];
 $tren = $tren ?? [];
+$cari = $cari ?? '';
+$kode = $kode ?? null;
 $hourMax = 1;
 
 foreach ($perHour as $row) {
@@ -131,6 +133,29 @@ foreach ($byOfficer as $row) {
             </nav>
         </div>
 
+        <?php if ($focus === 'antrean') : ?>
+            <form class="cari-kode" method="get" action="<?= e(url('/admin/antrean')) ?>" role="search">
+                <label class="field field--inline">
+                    <span class="field__label">Cari kode pemesanan</span>
+                    <input type="search" name="cari" value="<?= e($cari) ?>"
+                           placeholder="TCM-XXXXX" autocomplete="off" spellcheck="false">
+                </label>
+                <button class="btn btn--primary" type="submit">Cari</button>
+                <?php if ($cari !== '') : ?>
+                    <a class="btn btn--ghost" href="<?= e(url('/admin/antrean')) ?>">Bersihkan</a>
+                <?php endif; ?>
+            </form>
+
+            <?php if ($cari !== '') : ?>
+                <p class="card__text">
+                    Hasil pencarian <strong><?= e((string) $kode) ?></strong>
+                    <?= $location === null
+                        ? 'di seluruh kabupaten.'
+                        : 'di ' . e((string) $location['name']) . '. Antrean kantor lain tidak ditampilkan.' ?>
+                </p>
+            <?php endif; ?>
+        <?php endif; ?>
+
         <?php if ($queues === []) : ?>
             <p class="empty">Tidak ada antrean pada filter ini.</p>
         <?php else : ?>
@@ -155,6 +180,13 @@ foreach ($byOfficer as $row) {
                             <td>
                                 <strong><?= e((string) $queue['user_name']) ?></strong><br>
                                 <small><?= e((string) $queue['service_name']) ?> · nomor <?= e(str_pad((string) $queue['queue_number'], 3, '0', STR_PAD_LEFT)) ?></small>
+                                <?php if ($location === null) : ?>
+                                    <?php /* Super admin melihat seluruh kabupaten: tanpa nama kantor,
+                                             kode yang ketemu lewat pencarian tidak memberi tahu
+                                             antrean itu ada di mana. Admin kantor tidak perlu, semua
+                                             barisnya memang kantornya sendiri. */ ?>
+                                    <br><small class="muted"><?= e((string) $queue['location_name']) ?></small>
+                                <?php endif; ?>
                             </td>
                             <td><?= e(tanggal((string) $queue['queue_date'])) ?></td>
                             <td><span class="<?= e(status_class((string) $queue['status'])) ?>"><?= e(status_label((string) $queue['status'])) ?></span></td>

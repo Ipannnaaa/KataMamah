@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\Core\Auth;
+use App\Core\CodeGenerator;
 use App\Core\Controller;
 use App\Core\Request;
 use App\Core\Response;
@@ -27,11 +28,19 @@ final class OfficerController extends Controller
             $tab = 'baru';
         }
 
+        // Dinormalkan supaya "gheaa", "tcm gheaa", dan "TCM-GHEAA" sama-sama
+        // ketemu: kode dibacakan lewat telepon dan disalin dari pesan, jadi
+        // bentuk yang diketik petugas tidak pernah seragam.
+        $cari = trim($request->str('cari'));
+        $kode = $cari !== '' ? CodeGenerator::normalize($cari) : null;
+
         return $this->view('officer/index', [
             'title' => 'Papan antrean',
             'focus' => 'papan',
             'tab' => $tab,
-            'cards' => Queue::board($locationId, $tab, $officerId),
+            'cards' => Queue::board($locationId, $tab, $officerId, $kode),
+            'cari' => $cari,
+            'kode' => $kode,
             'counts' => [
                 'baru' => count(Queue::board($locationId, 'baru')),
                 'saya' => count(Queue::board($locationId, 'saya', $officerId)),

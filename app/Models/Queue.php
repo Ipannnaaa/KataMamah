@@ -95,8 +95,23 @@ SQL;
      *
      * @return array<int, array<string, mixed>>
      */
-    public static function board(int $locationId, string $tab, ?int $officerId = null): array
+    public static function board(int $locationId, string $tab, ?int $officerId = null, ?string $kode = null): array
     {
+        /*
+         * Pencarian kode mengabaikan tab dan status, tetapi tidak pernah
+         * mengabaikan lokasi: petugas hanya boleh menemukan antrean di
+         * kantornya sendiri. Kode antrean dibagikan lewat pesan dan mudah
+         * berpindah tangan, jadi kalau batas lokasi dilepas di sini, satu
+         * kode bocor cukup untuk mengintip antrean kantor lain.
+         */
+        if ($kode !== null && $kode !== '') {
+            return DB::all(
+                self::SELECT . ' WHERE q.location_id = ? AND q.code = ?'
+                . ' ORDER BY q.queue_date DESC',
+                [$locationId, $kode]
+            );
+        }
+
         if ($tab === 'baru') {
             return DB::all(
                 self::SELECT . " WHERE q.location_id = ? AND q.status = 'baru'"
@@ -127,14 +142,33 @@ SQL;
      *
      * @return array<int, array<string, mixed>>
      */
-    public static function forLocation(?int $locationId, ?string $status = null, ?string $date = null, int $limit = 100): array
-    {
+    public static function forLocation(
+        ?int $locationId,
+        ?string $status = null,
+        ?string $date = null,
+        int $limit = 100,
+        ?string $kode = null
+    ): array {
         $sql = self::SELECT . ' WHERE 1 = 1';
         $params = [];
 
         if ($locationId !== null) {
             $sql .= ' AND q.location_id = ?';
             $params[] = $locationId;
+        }
+
+        /*
+         * Kode dicari persis, bukan LIKE: kode antrean selalu utuh saat
+         * dibagikan, dan pencarian sebagian hanya membuka jalan menyapu
+         * tabel dengan potongan kode.
+         *
+         * Penyaring lokasi di atas tetap berlaku. Admin kantor hanya
+         * menemukan antrean kantornya; hanya super admin, yang lokasinya
+         * null, yang mencari ke seluruh kabupaten.
+         */
+        if ($kode !== null && $kode !== '') {
+            $sql .= ' AND q.code = ?';
+            $params[] = $kode;
         }
 
         if ($status !== null && $status !== '') {
