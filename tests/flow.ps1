@@ -33,6 +33,42 @@ $proyek = Split-Path -Parent $PSScriptRoot
 # jauh sebelum bagian rebutan antrean, jadi didefinisikan sejak awal.
 $bootstrap = ($proyek -replace '\\', '/') + '/bootstrap.php'
 
+# Sandi akun contoh dikarang acak oleh seeder dan berbeda di tiap
+# pemasangan, jadi pengujian tidak mungkin menebaknya. Di sini sandinya
+# disetel sementara ke nilai tetap, lalu dikembalikan apa adanya di akhir.
+# Hash lama ditulis ke berkas sementara, bukan ditahan di memori, supaya
+# tetap bisa dipulihkan kalau skrip ini mati di tengah jalan.
+$SandiUji = 'tuban12345'
+
+# Tiap jalan, skrip ini mendaftarkan satu akun warga baru di bagian klaim
+# tamu, dan akun itu tertinggal di basis data beserta antreannya. Kalau
+# sandinya tetap, puluhan akun sisa pengujian jadi bisa dimasuki dengan
+# menebak satu kata, dan ikut terbawa ke server lewat dump.
+$SandiTamu = -join ((1..24) | ForEach-Object { 'abcdefghjkmnpqrstuvwxyz23456789'[(Get-Random -Maximum 31)] })
+$sandiCadangan = Join-Path $env:TEMP ('flow-sandi-' + [guid]::NewGuid().ToString('N') + '.json')
+$sandiCadanganPhp = $sandiCadangan -replace '\\', '/'
+
+$null = & $Php -r @"
+require '$bootstrap';
+`$lama = App\Core\DB::all('SELECT id, password_hash FROM users WHERE email LIKE ' . chr(39) . '%@tcm.test' . chr(39));
+file_put_contents('$sandiCadanganPhp', json_encode(`$lama));
+App\Core\DB::run('UPDATE users SET password_hash = ? WHERE email LIKE ' . chr(39) . '%@tcm.test' . chr(39), [password_hash('$SandiUji', PASSWORD_DEFAULT)]);
+"@
+
+function KembalikanSandi() {
+    if (-not ($script:sandiCadangan -and (Test-Path -LiteralPath $script:sandiCadangan))) { return }
+
+    $null = & $Php -r @"
+require '$bootstrap';
+foreach (json_decode(file_get_contents('$sandiCadanganPhp'), true) ?: [] as `$b) {
+    App\Core\DB::update('users', ['password_hash' => `$b['password_hash']], 'id = :id', ['id' => (int) `$b['id']]);
+}
+"@
+
+    Remove-Item -LiteralPath $script:sandiCadangan -Force -ErrorAction SilentlyContinue
+    $script:sandiCadangan = $null
+}
+
 # Aplikasi diarahkan ke penampung SMTP selama pengujian.
 #
 # Tanpa ini, hasil uji bergantung pada SMTP apa yang kebetulan disetel di
@@ -82,7 +118,7 @@ function MatikanSink() {
     KembalikanEnv
 }
 
-trap { MatikanSink; break }
+trap { MatikanSink; KembalikanSandi; break }
 
 function Check([string]$label, [bool]$ok, [string]$extra = '') {
     if ($ok) { $script:pass++; "  ok   $label" }
@@ -151,7 +187,7 @@ trailer<</Root 1 0 R>>
 "@)
 
 "== 1. Login warga =="
-$warga = Login 'warga1@tcm.test' 'tuban12345'
+$warga = Login 'warga1@tcm.test' $SandiUji
 Check 'login warga berhasil' ($warga.page.Content -match 'Antrean saya')
 Check 'nama warga tampil' ($warga.page.Content -match 'Rudi Maulana')
 
@@ -255,7 +291,7 @@ try { Invoke-WebRequest -Uri "$base/admin" -WebSession $warga.session -UseBasicP
 Check 'warga ditolak di /admin (403)' ($f2 -eq 403) "(status $f2)"
 
 "== 11. Petugas menerima antrean =="
-$petugas = Login 'petugas1@tcm.test' 'tuban12345'
+$petugas = Login 'petugas1@tcm.test' $SandiUji
 Check 'login petugas berhasil' ($petugas.page.Content -match 'Papan antrean')
 
 $papan = Invoke-WebRequest -Uri "$base/petugas?tab=baru" -WebSession $petugas.session -UseBasicParsing
@@ -270,7 +306,7 @@ Check 'antrean pindah ke tab milik saya' ($milikSaya.Content -match [regex]::Esc
 Check 'status ditinjau tampil' ($milikSaya.Content -match 'Ditinjau')
 
 "== 12. Petugas lain tidak boleh mengubah antrean ini =="
-$petugas2 = Login 'petugas2@tcm.test' 'tuban12345'
+$petugas2 = Login 'petugas2@tcm.test' $SandiUji
 $papan2 = Invoke-WebRequest -Uri "$base/petugas?tab=baru" -WebSession $petugas2.session -UseBasicParsing
 $tokenP2 = Token $papan2.Content
 
@@ -318,7 +354,7 @@ try { Invoke-WebRequest -Uri "$base/api/chat/$kode" -WebSession $petugas2.sessio
 Check 'petugas lain ditolak membaca chat (403)' ($chatLain -eq 403) "(status $chatLain)"
 
 "== 16. Panel admin & rekap =="
-$admin = Login 'admin@tcm.test' 'tuban12345'
+$admin = Login 'admin@tcm.test' $SandiUji
 Check 'login admin berhasil' ($admin.page.Content -match 'Ringkasan hari ini')
 Check 'KPI antrean tampil' ($admin.page.Content -match 'Antrean hari ini')
 
@@ -427,7 +463,7 @@ $daftarPage = Invoke-WebRequest -Uri "$base/daftar" -SessionVariable klaimSessio
 $klaim = Invoke-WebRequest -Uri "$base/daftar" -Method Post -WebSession $klaimSession -UseBasicParsing `
     -Body @{
         nama = 'Siti Nurhaliza'; name = 'Siti Nurhaliza'; email = $tamuEmail
-        password = 'tuban12345'; password_confirmation = 'tuban12345'
+        password = $SandiTamu; password_confirmation = $SandiTamu
         setuju = '1'; _token = (Token $daftarPage.Content)
     }
 Check 'email tamu tidak ditolak sebagai duplikat' (-not ($klaim.Content -match 'sudah terdaftar'))
@@ -446,7 +482,7 @@ Check 'klaim terverifikasi' ($verifKlaim.Content -match 'terverifikasi')
 
 $masukKlaim = Invoke-WebRequest -Uri "$base/masuk" -WebSession $klaimSession -UseBasicParsing
 $klaimMasuk = Follow (Invoke-WebRequest -Uri "$base/masuk" -Method Post -WebSession $klaimSession -UseBasicParsing `
-    -Body @{ email = $tamuEmail; password = 'tuban12345'; _token = (Token $masukKlaim.Content); next = '' }) $klaimSession
+    -Body @{ email = $tamuEmail; password = $SandiTamu; _token = (Token $masukKlaim.Content); next = '' }) $klaimSession
 Check 'akun tamu yang diklaim bisa masuk' ($klaimMasuk.Content -match 'Antrean saya')
 
 $riwayat = Invoke-WebRequest -Uri "$base/akun/antrean" -WebSession $klaimSession -UseBasicParsing
@@ -577,7 +613,7 @@ $kirimAduan = Invoke-WebRequest -Uri "$base/lokasi/polsek-bulu/aduan" -Method Po
     }
 Check 'aduan tanpa akun diterima' ($kirimAduan.Content -match 'Aduan terkirim')
 
-$super = Login 'superadmin@tcm.test' 'tuban12345'
+$super = Login 'superadmin@tcm.test' $SandiUji
 $panelAduan = Invoke-WebRequest -Uri "$base/admin/aduan" -WebSession $super.session -UseBasicParsing
 Check 'aduan masuk panel admin' ($panelAduan.Content -match 'Jam buka di halaman ini keliru')
 Check 'panel menunjukkan kantor yang diadukan' ($panelAduan.Content -match 'Polsek Bulu')
@@ -588,7 +624,7 @@ $ubah = Invoke-WebRequest -Uri "$base/admin/aduan/$idAduan/status" -Method Post 
 Check 'status aduan bisa diubah' ($ubah.Content -match 'ditandai')
 Check 'catatan admin tersimpan' ($ubah.Content -match 'Dicek ke lapangan')
 
-$adminLokasi = Login 'admin@tcm.test' 'tuban12345'
+$adminLokasi = Login 'admin@tcm.test' $SandiUji
 $panelLain = Invoke-WebRequest -Uri "$base/admin/aduan" -WebSession $adminLokasi.session -UseBasicParsing
 Check 'admin lokasi tidak melihat aduan kantor lain' ($panelLain.Content -notmatch 'Jam buka di halaman ini keliru')
 
@@ -617,7 +653,7 @@ function Salinan([string]$src) {
     return (Get-Item -LiteralPath $tmp)
 }
 
-$sadmin = Login 'superadmin@tcm.test' 'tuban12345'
+$sadmin = Login 'superadmin@tcm.test' $SandiUji
 $panelFoto = Invoke-WebRequest -Uri "$base/admin/landmark/2/deskripsi" -WebSession $sadmin.session -UseBasicParsing
 # Jumlahnya dibaca dari basis data, bukan ditulis tetap. Menambah satu
 # landmark lewat panel sudah cukup membuat angka tetap itu salah, dan
@@ -1011,7 +1047,7 @@ Check 'pemilik antrean tidak berubah' ($rebutan -like '*pemilik-tetap') "($rebut
 # Mengubah email tidak boleh langsung berlaku: akun akan tetap bertanda
 # terverifikasi untuk alamat yang belum pernah dibuktikan, dan satu salah
 # ketik memutus satu-satunya jalan masuk pemiliknya.
-$wargaSesi = Login 'warga3@tcm.test' 'tuban12345'
+$wargaSesi = Login 'warga3@tcm.test' $SandiUji
 $emailBaru = "warga3-pindah-$([guid]::NewGuid().ToString('N').Substring(0,6))@contoh.test"
 $profil = Invoke-WebRequest -Uri "$base/akun/profil" -WebSession $wargaSesi.session -UseBasicParsing
 
@@ -1027,12 +1063,12 @@ Check 'sandi lama salah ditolak' ($tolakSandi.Content -match 'Sandi saat ini tid
 
 # Yang penting bukan hanya pesannya: sebelumnya profil sudah tersimpan
 # lebih dulu, jadi permintaan yang dinyatakan gagal tetap mengubah data.
-$masihLama = Login 'warga3@tcm.test' 'tuban12345'
+$masihLama = Login 'warga3@tcm.test' $SandiUji
 Check 'tidak ada yang tersimpan saat ditolak' ($masihLama.page.Content -match 'Antrean saya')
 
 $profil2 = Invoke-WebRequest -Uri "$base/akun/profil" -WebSession $wargaSesi.session -UseBasicParsing
 $simpanProfil = Follow (Invoke-WebRequest -Uri "$base/akun/profil" -Method Post -WebSession $wargaSesi.session -UseBasicParsing `
-    -Body ($isianProfil + @{ _token = (Token $profil2.Content); password_current = 'tuban12345' })) $wargaSesi.session
+    -Body ($isianProfil + @{ _token = (Token $profil2.Content); password_current = $SandiUji })) $wargaSesi.session
 Check 'ganti email minta konfirmasi dulu' ($simpanProfil.Content -match 'Konfirmasi dikirim ke')
 Check 'konfirmasi dikirim ke alamat baru' ((Sink 'kepada') -eq $emailBaru)
 
@@ -1058,7 +1094,7 @@ Check 'alamat lama tidak berlaku lagi' (-not ($lamaSudahTidak.page.Content -matc
 $null = & $Php -r @"
 require '$bootstrap';
 App\Core\DB::update('users', ['email' => 'warga3@tcm.test', 'pending_email' => null, 'phone' => null,
-    'password_hash' => password_hash('tuban12345', PASSWORD_DEFAULT)], 'id = :id', ['id' => 8]);
+    'password_hash' => password_hash('$SandiUji', PASSWORD_DEFAULT)], 'id = :id', ['id' => 8]);
 App\Core\DB::run('DELETE FROM email_verifications WHERE user_id = 8');
 "@
 
@@ -1304,7 +1340,7 @@ $kodeHasil = ((& $Php -r "require '$bootstrap'; echo (string) App\Core\DB::colum
 if ($kodeHasil -ne '') {
     # Sesi sendiri: $wargaSesi milik warga3, yang alamatnya sudah diganti
     # oleh bagian sebelumnya.
-    $pemilikHasil = Login 'warga1@tcm.test' 'tuban12345'
+    $pemilikHasil = Login 'warga1@tcm.test' $SandiUji
     $halHasil = Invoke-WebRequest -Uri "$base/akun/antrean/$kodeHasil" -WebSession $pemilikHasil.session -UseBasicParsing
     Check 'warga melihat kartu Hasil layanan' ($halHasil.Content -match 'Hasil layanan')
     Check 'hasil dipisah dari berkas unggahan warga' ($halHasil.Content -match 'Berkas yang Anda unggah')
@@ -1320,6 +1356,8 @@ $null = & $Php -r @"
 require '$bootstrap';
 App\Core\DB::run('DELETE FROM users WHERE email LIKE ' . chr(39) . 'uji.petugas.%@contoh.test' . chr(39));
 "@
+
+KembalikanSandi
 
 ''
 '--------------------------------------'

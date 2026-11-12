@@ -70,8 +70,8 @@ Buka <http://localhost:8080>.
 
 ## Akun demo
 
-Sandi semuanya **`tuban12345`**. Hapus atau ganti sebelum dipasang di server
-sungguhan.
+Sandinya dikarang acak oleh `database/seed.php` dan dicetak sekali di akhir
+seeding. Catat saat itu juga, tidak disimpan di mana pun.
 
 | Peran | Email |
 |---|---|

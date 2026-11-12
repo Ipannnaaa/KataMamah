@@ -890,7 +890,38 @@ foreach ([
     }
 }
 
-$sandi = password_hash('tuban12345', PASSWORD_DEFAULT);
+/*
+ * Sandi akun contoh.
+ *
+ * Dulu di sini ada sandi tetap yang ikut tertulis di README. Begitu
+ * aplikasinya dipasang di server yang bisa diakses umum, sandi itu berlaku
+ * untuk superadmin juga, dan siapa pun yang membaca README bisa masuk. Jadi
+ * sekarang dikarang acak tiap kali seeder jalan, lalu dicetak sekali di
+ * akhir. Catat saat itu juga, tidak disimpan di mana pun.
+ *
+ * SEED_PASSWORD di .env bisa dipakai untuk memaksa sandi tertentu, misalnya
+ * di lingkungan pengujian yang perlu nilai tetap.
+ */
+$sandiPolos = (string) env('SEED_PASSWORD', '');
+
+if ($sandiPolos === '') {
+    $huruf = 'abcdefghjkmnpqrstuvwxyz23456789';
+    $bagian = [];
+
+    for ($b = 0; $b < 4; $b++) {
+        $satu = '';
+
+        for ($i = 0; $i < 5; $i++) {
+            $satu .= $huruf[random_int(0, strlen($huruf) - 1)];
+        }
+
+        $bagian[] = $satu;
+    }
+
+    $sandiPolos = implode('-', $bagian);
+}
+
+$sandi = password_hash($sandiPolos, PASSWORD_DEFAULT);
 
 $userIds = [];
 
@@ -1232,13 +1263,16 @@ printf("  %d berkas hasil, %d antrean bertarif\n", $jumlahHasil, $jumlahBayar);
 /* ================================================================ ringkasan */
 
 printf(
-    "\nSelesai.\n  %d kecamatan\n  %d kantor layanan\n  %d layanan\n  %d akun (sandi: tuban12345)\n  %d antrean contoh\n",
+    "\nSelesai.\n  %d kecamatan\n  %d kantor layanan\n  %d layanan\n  %d akun\n  %d antrean contoh\n",
     count($kecamatan),
     count($locationIds),
     $jumlahLayanan,
     count($userIds),
     $jumlahAntrean
 );
+
+printf("\nSandi semua akun contoh: %s\n", $sandiPolos);
+printf("Catat sekarang, sandi ini tidak disimpan di mana pun.\n");
 
 // Scene peta ikut berubah, jadi cache-nya dikosongkan.
 printf("  %d berkas cache dibersihkan\n", Cache::flush());

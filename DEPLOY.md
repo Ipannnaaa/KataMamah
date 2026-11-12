@@ -233,8 +233,9 @@ sampai, tambahkan MX lewat **Zone Editor**.
 
 ## 12. Sebelum dibuka ke umum
 
-- Ganti sandi semua akun contoh. Seeder memakai `tuban12345` untuk semuanya,
-  termasuk `superadmin@tcm.test`.
+- Pastikan sandi akun contoh bukan lagi bawaan. Seeder mengarangnya acak dan
+  mencetaknya sekali, jadi kalau Anda mengimpor dump dari komputer sendiri,
+  yang berlaku adalah sandi yang ada di sana.
 - Hapus `public/pasang.php`, atau kosongkan `INSTALL_KEY` di `.env`.
 - Hapus akun contoh yang tidak dipakai.
 - Pastikan sandi yang Anda isi di `.env` server tidak pernah ikut

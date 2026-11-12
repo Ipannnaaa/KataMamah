@@ -60,8 +60,10 @@ Untuk menaruhnya di hosting, langkahnya ada di [DEPLOY.md](DEPLOY.md).
 
 ### Akun demo
 
-Sandinya semua `tuban12345`. Ganti sebelum dipasang di server yang bisa
-diakses umum.
+Sandinya dikarang acak oleh `database/seed.php` dan dicetak sekali di akhir
+seeding, jadi berbeda di tiap pemasangan. Catat saat itu juga. Sandi itu
+sengaja tidak ditulis di sini, karena repositori ini publik dan salah satu
+akun di bawah adalah superadmin.
 
 | Peran | Email | Kantor |
 |---|---|---|
