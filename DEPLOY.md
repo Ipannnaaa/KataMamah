@@ -32,12 +32,15 @@ verifikasi tidak pernah terkirim dan halaman daftar akan bilang begitu.
 
 cPanel, menu **MySQL Databases**.
 
-1. Buat database bernama `katamamah`. cPanel menyimpannya dengan awalan nama
-   akun, jadi nama sebenarnya jadi semacam `akun_katamamah`. Catat nama
-   lengkapnya, itu yang dipakai di `.env`.
-2. Buat user MySQL baru dengan sandi yang kuat.
-3. Di bagian **Add User To Database**, pasangkan user itu ke database tadi
-   dan beri **ALL PRIVILEGES**.
+1. Buat database bernama `Katamamah`. cPanel menyimpannya dengan awalan nama
+   akun, jadi nama lengkapnya jadi `beaconio_Katamamah`.
+2. Buat pengguna MySQL `katamamah`, yang jadi `beaconio_katamamah`.
+3. Di bagian **Add User To Database**, pasangkan pengguna itu ke database
+   tadi dan beri **ALL PRIVILEGES**.
+
+Kedua nama itu sudah tertulis di `.env.hosting`, jadi tidak perlu diketik
+ulang. Perhatikan huruf besar kecilnya: nama database pakai `K` besar,
+nama penggunanya `k` kecil, dan di Linux keduanya dibedakan.
 
 ## 3. Pindahkan isi basis data dari lokal
 
@@ -51,19 +54,15 @@ Di komputer sendiri:
 C:\xampp\mysql\bin\mysqldump.exe -u root --default-character-set=utf8mb4 --no-tablespaces wia > katamamah.sql
 ```
 
-Lalu di hosting: buka **phpMyAdmin**, pilih dulu database `akun_katamamah` di
+Lalu di hosting: buka **phpMyAdmin**, pilih dulu database `beaconio_Katamamah` di
 panel kiri, masuk tab **Import**, pilih `katamamah.sql`, Import.
 
 Kalau berkasnya kebesaran untuk diunggah, zip dulu. phpMyAdmin menerima
 `.sql.zip` langsung.
 
-Mau mulai dari kosong? Impor `database/schema.sql` dengan cara yang sama,
-tabelnya akan terbentuk tapi tanpa isi. Datanya lalu dibuat oleh
-`database/seed.php`, yang perlu PHP dari baris perintah. Kalau hosting Anda
-tidak punya Terminal, pakai **Cron Jobs**: buat cron sekali jalan dengan
-perintah `/usr/local/bin/php /home/akun/katamamah/database/seed.php`, lalu
-hapus cron-nya setelah selesai. Hati hati, `seed.php` mengosongkan tabel
-lebih dulu, jadi jangan dijalankan di basis data yang sudah ada isinya.
+Mau mulai dari kosong, dengan data contoh yang baru? Itu dikerjakan
+`public/pasang.php`, lihat bagian 7. Cara itu tidak butuh akses baris
+perintah sama sekali.
 
 Abaikan `database/seed.sql`. Isinya tertinggal dari versi lama dan datanya
 bukan Tuban.
@@ -110,55 +109,36 @@ kalau masih bisa.
 ## 6. Isi `.env` di server
 
 `.env` ikut repo, tapi isinya setelan untuk komputer sendiri dan sengaja
-tanpa sandi. Yang ada di server, `/home/akun/katamamah/.env`, diubah jadi
-seperti ini:
+tanpa sandi. Yang dipakai di server sudah disiapkan terpisah, `.env.hosting`,
+lengkap dengan nama basis data dan nama pengguna yang benar. Di server:
 
-```
-APP_NAME="Tuban Civic Map"
-APP_SHORT_NAME=TCM
-APP_WILAYAH=Tuban
-
-APP_URL=https://beacon-its.com
-APP_BASE_PATH=
-
-APP_DEBUG=false
-APP_HTTPS=true
-
-DB_HOST=localhost
-DB_PORT=3306
-DB_NAME=akun_katamamah
-DB_USER=akun_katamamah
-DB_PASS=sandi basis data
-
-MAIL_HOST=beacon-its.com
-MAIL_PORT=465
-MAIL_ENCRYPTION=ssl
-MAIL_AUTH=true
-MAIL_USERNAME=katamamah@beacon-its.com
-MAIL_PASSWORD=sandi mailbox
-MAIL_FROM=katamamah@beacon-its.com
-MAIL_FROM_NAME="Tuban Civic Map"
-MAIL_TIMEOUT=10
-MAIL_DEBUG=0
-MAIL_CODE_TTL=15
-MAIL_CODE_ATTEMPTS=5
+```bash
+cd /home/akun/katamamah && cp .env.hosting .env
 ```
 
-Tiga baris yang wajib beda dari lokal:
+Lalu buka `.env` lewat File Manager dan isi tiga baris yang sengaja
+dikosongkan:
 
-- `APP_DEBUG=false`. Kalau dibiarkan `true`, pesan galat beserta potongan
-  kode ikut tampil ke pengunjung.
+| Baris | Diisi dengan |
+|---|---|
+| `DB_PASS` | sandi pengguna MySQL yang dibuat di bagian 2 |
+| `MAIL_PASSWORD` | sandi mailbox `katamamah@beacon-its.com` |
+| `INSTALL_KEY` | karangan acak minimal 16 karakter, dipakai di bagian 7 |
+
+Ketiganya tidak pernah ditulis ke repositori, karena repositori ini publik.
+
+Dua setelan di `.env.hosting` yang penting dan sudah benar di sana, jangan
+diubah balik:
+
+- `APP_DEBUG=false`. Kalau `true`, pesan galat beserta potongan kode ikut
+  tampil ke pengunjung.
 - `APP_HTTPS=true`. Ini yang menandai cookie sesi sebagai secure. Jangan
-  dinyalakan sebelum SSL benar benar aktif, karena cookie secure tidak
-  dikirim lewat http dan Anda tidak akan bisa masuk.
-- `APP_BASE_PATH=` dibiarkan kosong, karena domain sudah menunjuk langsung ke
-  folder `public`.
-
-Dua nilai yang cuma ada di server dan tidak pernah ditulis ke repo:
-`DB_PASS` dan `MAIL_PASSWORD`.
+  aktif sebelum SSL benar benar jalan, karena cookie secure tidak dikirim
+  lewat http dan Anda tidak akan bisa masuk. Kalau SSL-nya belum siap, isi
+  `false` dulu, lalu ubah setelah bagian 9 selesai.
 
 Kalau tadi mengunggah lewat Git Version Control, ada satu akibatnya. `.env`
-di server sudah Anda ubah, padahal berkas yang sama juga dilacak Git. Begitu
+di server sudah Anda isi, padahal berkas yang sama juga dilacak Git. Begitu
 menekan Pull, Git menolak jalan karena ada perubahan lokal yang bakal
 tertimpa. Beresnya sekali saja, lewat Terminal cPanel:
 
@@ -170,7 +150,32 @@ Setelah itu Git berhenti memperhatikan `.env` di server, dan Pull berikutnya
 jalan tanpa mengusik sandi yang sudah Anda isi. Kalau hosting Anda tidak
 punya Terminal, unggah lewat zip saja, jangan lewat Git.
 
-## 7. Izin folder
+## 7. Bikin tabel dan isinya tanpa baris perintah
+
+Lewati bagian ini kalau tadi sudah mengimpor dump dari bagian 3. Basis
+datanya sudah lengkap.
+
+Isi basis data dibuat oleh `database/seed.php`, yang memang skrip baris
+perintah, padahal hosting bersama sering tidak memberi akses ke sana. Jalan
+pintasnya `public/pasang.php`, halaman yang mengerjakan hal yang sama lewat
+peramban.
+
+Halaman itu mati total selama `INSTALL_KEY` di `.env` kosong, dan menjawab
+404 seperti berkas yang tidak ada. Jadi isi dulu barisnya, lalu buka:
+
+```
+https://beacon-its.com/pasang.php
+```
+
+Kuncinya dimasukkan lewat kolom di halaman itu, bukan lewat URL, supaya
+tidak ikut tercatat di log akses server. Setelah masuk ada dua tombol,
+dijalankan berurutan: **Buat tabel**, lalu **Isi data**.
+
+Begitu selesai, **hapus `public/pasang.php`** lewat File Manager, atau
+kosongkan lagi `INSTALL_KEY`. Selama keduanya masih ada, siapa pun yang tahu
+kuncinya bisa mengosongkan basis data Anda.
+
+## 8. Izin folder
 
 Empat folder ini harus bisa ditulis PHP:
 
@@ -184,7 +189,7 @@ public/uploads/lokasi
 Folder `755`, berkas `644`. Di cPanel, PHP berjalan sebagai akun Anda
 sendiri, jadi `755` sudah cukup. Jangan dibuat `777`.
 
-## 8. Pasang SSL
+## 9. Pasang SSL
 
 cPanel, menu **SSL/TLS Status**, tekan **Run AutoSSL**. Tunggu sampai
 sertifikat untuk `beacon-its.com` terbit, buka `https://beacon-its.com` untuk
@@ -193,7 +198,7 @@ memastikan, baru ubah `APP_HTTPS=true` di `.env`.
 Setelah itu nyalakan **Force HTTPS Redirect** di menu Domains, supaya yang
 masuk lewat http ikut dialihkan.
 
-## 9. Email
+## 10. Email
 
 Mailbox `katamamah@beacon-its.com` dan SMTP di port 465 sudah dipakai selama
 pengembangan dan sertifikatnya cocok dengan nama host, jadi setelan di atas
@@ -214,7 +219,7 @@ catatan MX sendiri. Email keluar tidak terpengaruh, tapi email masuk cuma
 mengandalkan cadangan ke catatan A. Kalau nanti ada balasan warga yang tidak
 sampai, tambahkan MX lewat **Zone Editor**.
 
-## 10. Uji setelah hidup
+## 11. Uji setelah hidup
 
 - Halaman depan terbuka dan petanya muncul.
 - `/peta` dan `/aspirasi` terbuka.
@@ -226,10 +231,11 @@ sampai, tambahkan MX lewat **Zone Editor**.
 - Buka `https://beacon-its.com/.env`. Harus gagal. Kalau isinya malah
   terbaca, document root-nya belum benar.
 
-## 11. Sebelum dibuka ke umum
+## 12. Sebelum dibuka ke umum
 
 - Ganti sandi semua akun contoh. Seeder memakai `tuban12345` untuk semuanya,
   termasuk `superadmin@tcm.test`.
+- Hapus `public/pasang.php`, atau kosongkan `INSTALL_KEY` di `.env`.
 - Hapus akun contoh yang tidak dipakai.
 - Pastikan sandi yang Anda isi di `.env` server tidak pernah ikut
   ter-commit. `.env` di repo harus tetap kosong di dua baris sandi itu.

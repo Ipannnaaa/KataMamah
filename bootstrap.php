@@ -7,6 +7,13 @@ declare(strict_types=1);
  * Tidak memerlukan Composer: autoloader PSR-4 sederhana di bawah sudah cukup.
  */
 
+// Berkas ini di-require ulang oleh skrip di database/, yang dibuat supaya
+// bisa dijalankan sendiri. Tanpa penjaga ini, require kedua akan mendefinisi
+// ulang BASE_PATH dan memuat ulang seluruh konfigurasi.
+if (defined('BASE_PATH')) {
+    return;
+}
+
 define('BASE_PATH', __DIR__);
 
 /*
