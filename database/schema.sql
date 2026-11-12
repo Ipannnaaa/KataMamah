@@ -1,19 +1,23 @@
 -- =============================================================================
--- WIA — skema basis data
--- MySQL 8 / MariaDB 10.6+ · utf8mb4
+-- WIA, skema basis data
+-- MySQL 8 / MariaDB 10.6+, utf8mb4
 --
--- Jalankan:  mysql -u root -p < database/schema.sql
--- atau impor file ini lewat phpMyAdmin.
+-- Basis datanya dibuat lebih dulu, lalu file ini diimpor ke dalamnya:
+--
+--   mysql -u root -e "CREATE DATABASE IF NOT EXISTS wia DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
+--   mysql -u root wia < database/schema.sql
+--
+-- Lewat phpMyAdmin: pilih dulu basis datanya di panel kiri, baru impor.
+--
+-- File ini sengaja tidak memuat CREATE DATABASE maupun USE. Di hosting
+-- bersama nama basis data selalu diberi awalan nama akun, misalnya
+-- akun_katamamah, dan pengguna MySQL-nya tidak diberi hak CREATE DATABASE.
+-- Dua perintah itu akan menggagalkan impor di sana, sementara di sini
+-- gunanya hanya menghemat satu baris perintah.
 -- =============================================================================
 
 SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
-
-CREATE DATABASE IF NOT EXISTS `wia`
-    DEFAULT CHARACTER SET utf8mb4
-    COLLATE utf8mb4_unicode_ci;
-
-USE `wia`;
 
 DROP TABLE IF EXISTS `email_verifications`;
 DROP TABLE IF EXISTS `aspirations`;

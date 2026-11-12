@@ -37,7 +37,8 @@ cd KataMamah
 
 ```bash
 cp .env.example .env
-C:\xampp\mysql\bin\mysql.exe -u root < database/schema.sql
+C:\xampp\mysql\bin\mysql.exe -u root -e "CREATE DATABASE IF NOT EXISTS wia DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
+C:\xampp\mysql\bin\mysql.exe -u root wia < database/schema.sql
 C:\xampp\php\php.exe database/seed.php
 ```
 
@@ -54,6 +55,8 @@ C:\xampp\php\php.exe -S localhost:8080 -t public
 
 Buka <http://localhost:8080>. MySQL harus hidup, kalau mati semua halaman
 memberi galat 500.
+
+Untuk menaruhnya di hosting, langkahnya ada di [DEPLOY.md](DEPLOY.md).
 
 ### Akun demo
 
@@ -96,7 +99,7 @@ dengan 631 layanan dan 1.341 syarat berkas.
 "Perlu dikonfirmasi". Pembayaran masih diverifikasi admin secara manual, belum
 ada QRIS atau virtual account. Pemberitahuan lewat WhatsApp juga belum ada.
 
-**Pengujian.** 43 pemeriksaan smoke dan 238 pemeriksaan alur, semuanya lolos.
+**Pengujian.** 43 pemeriksaan smoke dan 267 pemeriksaan alur, semuanya lolos.
 
 ## Isi folder
 

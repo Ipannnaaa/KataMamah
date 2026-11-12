@@ -53,7 +53,8 @@ dikecilkan.
 **4. Impor basis data:**
 
 ```bash
-C:\xampp\mysql\bin\mysql.exe -u root < database/schema.sql
+C:\xampp\mysql\bin\mysql.exe -u root -e "CREATE DATABASE IF NOT EXISTS wia DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
+C:\xampp\mysql\bin\mysql.exe -u root wia < database/schema.sql
 C:\xampp\php\php.exe database/seed.php
 ```
 
