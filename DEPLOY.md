@@ -78,8 +78,8 @@ Cara pertama, lewat cPanel **Git Version Control**. Clone URL
 kalau nanti ada perbaikan cukup tekan Pull, tidak perlu unggah ulang.
 
 Cara kedua, zip folder proyek di komputer sendiri, unggah lewat **File
-Manager**, lalu Extract. Jangan ikutkan `.git`, `.env`, dan isi
-`storage/logs` serta `storage/cache`.
+Manager**, lalu Extract. Jangan ikutkan `.git` dan isi `storage/logs`
+serta `storage/cache`.
 
 ## 5. Arahkan domain ke folder `public`
 
@@ -107,10 +107,11 @@ Cara ini jalan, tapi kode sumbernya jadi berada di dalam document root dan
 keamanannya cuma bergantung pada satu aturan rewrite. Pakai cara pertama
 kalau masih bisa.
 
-## 6. Buat `.env` di server
+## 6. Isi `.env` di server
 
-`.env` sengaja tidak ikut repo, jadi harus dibuat sendiri di server, di
-`/home/akun/katamamah/.env`:
+`.env` ikut repo, tapi isinya setelan untuk komputer sendiri dan sengaja
+tanpa sandi. Yang ada di server, `/home/akun/katamamah/.env`, diubah jadi
+seperti ini:
 
 ```
 APP_NAME="Tuban Civic Map"
@@ -152,6 +153,22 @@ Tiga baris yang wajib beda dari lokal:
   dikirim lewat http dan Anda tidak akan bisa masuk.
 - `APP_BASE_PATH=` dibiarkan kosong, karena domain sudah menunjuk langsung ke
   folder `public`.
+
+Dua nilai yang cuma ada di server dan tidak pernah ditulis ke repo:
+`DB_PASS` dan `MAIL_PASSWORD`.
+
+Kalau tadi mengunggah lewat Git Version Control, ada satu akibatnya. `.env`
+di server sudah Anda ubah, padahal berkas yang sama juga dilacak Git. Begitu
+menekan Pull, Git menolak jalan karena ada perubahan lokal yang bakal
+tertimpa. Beresnya sekali saja, lewat Terminal cPanel:
+
+```bash
+cd /home/akun/katamamah && git update-index --skip-worktree .env
+```
+
+Setelah itu Git berhenti memperhatikan `.env` di server, dan Pull berikutnya
+jalan tanpa mengusik sandi yang sudah Anda isi. Kalau hosting Anda tidak
+punya Terminal, unggah lewat zip saja, jangan lewat Git.
 
 ## 7. Izin folder
 
@@ -214,6 +231,8 @@ sampai, tambahkan MX lewat **Zone Editor**.
 - Ganti sandi semua akun contoh. Seeder memakai `tuban12345` untuk semuanya,
   termasuk `superadmin@tcm.test`.
 - Hapus akun contoh yang tidak dipakai.
+- Pastikan sandi yang Anda isi di `.env` server tidak pernah ikut
+  ter-commit. `.env` di repo harus tetap kosong di dua baris sandi itu.
 - Data kantor dan layanan berasal dari OpenStreetMap. Atribusi
   "© OpenStreetMap contributors" di bawah peta harus tetap kelihatan, itu
   syarat lisensi ODbL.

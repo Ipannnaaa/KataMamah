@@ -1,4 +1,5 @@
-/.env
+# .env ikut repositori supaya setelannya bisa dibaca langsung. Isinya
+# setelan lokal tanpa kredensial, dan harus tetap begitu.
 /storage/logs/*
 /storage/cache/*
 /storage/uploads/*
