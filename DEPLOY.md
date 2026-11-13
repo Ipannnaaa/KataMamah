@@ -92,26 +92,50 @@ kosong lewat bagian 7, karena belum ada berkas unggahan yang perlu dibawa.
 Yang boleh dibuka dari internet cuma folder `public`. Sisanya, termasuk
 `.env` dan seluruh kode, harus di luar jangkauan.
 
-cPanel, menu **Domains**, pilih `beacon-its.com`, ubah **Document Root**
-menjadi `/home/akun/katamamah/public`.
+**Kalau `beacon-its.com` sudah dipakai situs lain**, dan memang begitu
+keadaannya sekarang, jangan ubah Document Root domain utama: situs yang
+sudah ada di sana akan ikut hilang. Pakai subdomain.
 
-Kalau Document Root domain utama tidak bisa diubah di hosting Anda, taruh
-seluruh proyek di `public_html` dan buat `public_html/.htaccess` berisi:
+cPanel, menu **Domains**, **Create A New Domain**:
 
-```apache
-RewriteEngine On
+| Kolom | Isi |
+|---|---|
+| Domain | `katamamah.beacon-its.com` |
+| Document Root | `/home/akun/katamamah/public` |
 
-# Berkas sumber tidak boleh dibuka dari luar.
-RewriteRule ^(app|config|routes|storage|database|tests|bootstrap\.php|\.env) - [F,L]
+Hilangkan centang "Share document root", supaya kolom Document Root bisa
+diisi sendiri. Setelah itu aplikasinya ada di
+`https://katamamah.beacon-its.com`, dan `APP_BASE_PATH` tetap kosong.
 
-# Sisanya dilayani dari dalam folder public.
-RewriteCond %{REQUEST_URI} !^/public/
-RewriteRule ^(.*)$ public/$1 [L]
+Kalau domainnya belum dipakai apa pun, Document Root domain utama boleh
+langsung diarahkan ke `/home/akun/katamamah/public`.
+
+### Kalau terpaksa menumpang di subfolder
+
+Misalnya aplikasinya harus ada di `beacon-its.com/KataMamah/` dan proyeknya
+sudah terlanjur di dalam `public_html`. Itu bisa, tetapi kode sumbernya jadi
+berada di dalam document root: `.env.hosting` dan `database/schema.sql`
+langsung bisa diunduh siapa saja, dan berkas di `app/` bisa dipanggil lewat
+HTTP.
+
+Repositori ini memuat `.htaccess` di akar proyek yang menutup semua itu
+sekaligus mengarahkan permintaan ke dalam `public`. Berkas itu baru
+berfungsi kalau proyeknya ada di dalam document root, dan diabaikan kalau
+tidak. Yang perlu diubah cuma dua baris di `.env`:
+
+```
+APP_URL=https://beacon-its.com/KataMamah
+APP_BASE_PATH=KataMamah
 ```
 
-Cara ini jalan, tapi kode sumbernya jadi berada di dalam document root dan
-keamanannya cuma bergantung pada satu aturan rewrite. Pakai cara pertama
-kalau masih bisa.
+`APP_BASE_PATH` berisi jalur folder proyek dilihat dari domain, tanpa garis
+miring, dan tanpa kata `public`. Rewrite yang menambahkan `public` berjalan
+di dalam server, sementara alamat yang dilihat peramban tetap
+`/KataMamah/...`, dan itulah yang dipotong aplikasi.
+
+Setelah itu pastikan tiga alamat ini menjawab 403, bukan 200:
+`/KataMamah/.env.hosting`, `/KataMamah/database/schema.sql`, dan
+`/KataMamah/app/Core/DB.php`.
 
 ## 6. Isi `.env` di server
 

@@ -1,0 +1,43 @@
+# Penjaga untuk pemasangan di dalam document root.
+#
+# Rancangan aplikasi ini menaruh seluruh kode di luar jangkauan web dan
+# hanya menyajikan folder public. Kalau itu bisa dilakukan, berkas ini tidak
+# pernah dibaca siapa pun dan tidak ada ruginya ikut repositori.
+#
+# Tapi kalau proyeknya terpaksa diletakkan di dalam public_html, misalnya
+# karena domainnya sudah dipakai situs lain dan aplikasi ini menumpang di
+# sebuah subfolder, maka app/, config/, database/, dan .env ikut bisa
+# diminta lewat HTTP. Penjagaan yang biasanya dikerjakan oleh letak folder
+# harus ditulis ulang di sini.
+#
+# Ini jaring pengaman, bukan pengganti tata letak yang benar. Kalau bisa,
+# pakai subdomain yang document root-nya menunjuk ke folder public.
+
+Options -Indexes
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Kode sumber dan data tidak boleh diminta, apalagi dijalankan.
+    RewriteRule ^(app|config|database|routes|storage|tests)(/|$) - [F,L]
+    RewriteRule ^bootstrap\.php$ - [F,L]
+
+    # Permintaan yang sudah menunjuk ke dalam public diteruskan apa adanya.
+    # Tanpa baris ini, aturan berikutnya akan menambah "public/" berulang
+    # kali sampai Apache menyerah.
+    RewriteRule ^public(/|$) - [L]
+
+    # Sisanya dilayani dari dalam public, supaya alamat yang dipakai orang
+    # tidak perlu memuat kata "public".
+    RewriteRule ^(.*)$ public/$1 [L]
+</IfModule>
+
+# Berkas bertitik di depan (.env, .env.hosting, .gitignore) dan berkas
+# sumber yang bukan untuk disajikan.
+<FilesMatch "^\.">
+    Require all denied
+</FilesMatch>
+
+<FilesMatch "\.(sql|md|lock|ps1|example|hosting|bak|dist)$">
+    Require all denied
+</FilesMatch>
