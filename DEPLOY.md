@@ -71,14 +71,21 @@ bukan Tuban.
 
 Taruh di **luar** `public_html`, misalnya di `/home/akun/katamamah`.
 
-Cara pertama, lewat cPanel **Git Version Control**. Clone URL
-`https://github.com/Ipannnaaa/KataMamah.git`, Repository Path
-`/home/akun/katamamah`. Reponya publik jadi tidak perlu kunci SSH. Enaknya,
-kalau nanti ada perbaikan cukup tekan Pull, tidak perlu unggah ulang.
+Kalau Anda mengimpor dump dari bagian 3, **pakai cara zip**, bukan Git.
+Alasannya: berkas yang diunggah warga ada di `storage/uploads`, dan folder
+itu diabaikan `.gitignore` karena isinya data, bukan kode. Dump memuat
+barisnya, jadi kalau berkasnya tidak ikut, 97 lampiran di situs jadi tautan
+mati. Zip membawa berkas itu, clone tidak.
 
-Cara kedua, zip folder proyek di komputer sendiri, unggah lewat **File
-Manager**, lalu Extract. Jangan ikutkan `.git` dan isi `storage/logs`
-serta `storage/cache`.
+Cara pertama, zip folder proyek di komputer sendiri, unggah lewat **File
+Manager**, lalu Extract. Jangan ikutkan `.git` dan isi `storage/logs` serta
+`storage/cache`. Pastikan `storage/uploads` ikut.
+
+Cara kedua, lewat cPanel **Git Version Control**. Clone URL
+`https://github.com/Ipannnaaa/KataMamah.git`, Repository Path
+`/home/akun/katamamah`. Reponya publik jadi tidak perlu kunci SSH, dan
+pembaruan nanti cukup tekan Pull. Cocok kalau Anda mulai dari basis data
+kosong lewat bagian 7, karena belum ada berkas unggahan yang perlu dibawa.
 
 ## 5. Arahkan domain ke folder `public`
 
